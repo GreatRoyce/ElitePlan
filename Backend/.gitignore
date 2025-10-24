@@ -1,0 +1,94 @@
+<<<<<<< HEAD
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+
+# MongoDB
+#data/
+
+# React.js
+build/
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+
+#Logs
+logs/
+*.log
+
+# Depency lock files
+package-lock.json
+yarn.lock
+#Build output
+public/
+
+# Testing
+coverage/
+
+# Misc
+.DS_Store
+Thumbs.db
+
+#secret
+.env
+=======
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+
+# MongoDB
+#data/
+
+# React.js
+build/
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+
+#Logs
+logs/
+*.log
+
+# Depency lock files
+package-lock.json
+yarn.lock
+#Build output
+public/
+
+# Testing
+coverage/
+
+# Misc
+.DS_Store
+Thumbs.db
+>>>>>>> 512771d3aefeb7aaa5b5d400985b7c2342eff7d1
