@@ -1,27 +1,26 @@
 const express = require("express");
 const dotenv = require("dotenv");
-
-dotenv.config();
-
 const cors = require("cors");
 const morgan = require("morgan");
 const path = require("path");
 const connectDB = require("./database/dbConnection");
 
+dotenv.config();
+
+const app = express();
+
 // Routers
 const clientRouter = require("./src/routes/client.routes");
-const plannerRouter = require("./src/routes/planner.routes");
+const plannerRouter = require("./src/routes/dashboard/plannerdashboard.routes");
 const vendorRouter = require("./src/routes/vendor.routes");
 const authRoutes = require("./src/routes/auth.routes");
 const clientProfileRoutes = require("./src/routes/usersRoutesController/clientProfile.routes");
 const plannerProfileRoutes = require("./src/routes/usersRoutesController/plannerProfile.routes");
 const vendorProfileRoutes = require("./src/routes/usersRoutesController/vendorProfile.routes");
-
+const vendorDashboardRoutes = require("./src/routes/dashboard/vendordashboard.routes");
+const clientDashboardRoutes = require("./src/routes/dashboard/clientdashboard.routes");
 const bookmarkRoutes = require("./src/routes/bookmark.routes");
-
 const initialConsultationRoutes = require("./src/routes/initialConsultation.routes");
-
-const app = express();
 
 // =======================
 // ⚙️ Database Connection
@@ -52,10 +51,10 @@ if (process.env.NODE_ENV !== "production") {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ========================================
-// 🖼️ Serve Static Uploads
-// ========================================
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+// =======================
+// 🖼️ Static Files
+// =======================
+app.use("/uploads", express.static("uploads"));
 
 // =======================
 // 📍 Routes
@@ -69,19 +68,21 @@ app.get("/", (req, res) => {
 
 // Core platform routes
 app.use("/api/v1", clientRouter);
-app.use("/api/v1", plannerRouter);
+app.use("/api/v1/planner-dashboard", plannerRouter);
 app.use("/api/v1", vendorRouter);
+app.use("/api/v1/vendor-dashboard", vendorDashboardRoutes);
+app.use("/api/v1/client-dashboard", clientDashboardRoutes);
 
-// Auth route
+// Auth
 app.use("/api/v1/auth", authRoutes);
 
-// User profile routes
+// Profiles
 app.use("/api/v1/client-profile", clientProfileRoutes);
 app.use("/api/v1/planner-profile", plannerProfileRoutes);
 app.use("/api/v1/vendor-profile", vendorProfileRoutes);
 
+// Other routes
 app.use("/api/v1/consultation", initialConsultationRoutes);
-
 app.use("/api/v1/bookmarks", bookmarkRoutes);
 
 // =======================
