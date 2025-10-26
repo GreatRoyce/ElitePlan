@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import api from "../../utils/axios";
 import { useNavigate } from "react-router-dom";
 
@@ -12,7 +12,7 @@ import MessagesSection from "./ClientPieces/MessagesSection";
 import ClientPresence from "../Presence/clientPresence";
 
 // Icons
-import { Compass, Book, MessageCircle, User } from "lucide-react";
+import { Compass, Book, MessageCircle, User, CalendarDays } from "lucide-react";
 
 export default function ClientLounge({
   user,
@@ -26,112 +26,127 @@ export default function ClientLounge({
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [bookmarkLoading, setBookmarkLoading] = useState(null);
   const [activeSection, setActiveSection] = useState("overview");
-  const [viewMode, setViewMode] = useState("grid"); // grid | list
+  const [viewMode, setViewMode] = useState("grid");
+  const [bookings, setBookings] = useState([]); // NEW
+  const [bookingsLoading, setBookingsLoading] = useState(false); // NEW
 
   const navigate = useNavigate();
 
-  // Map profile helper
-  const mapProfile = (item, type) => {
+  // 🧩 Helper — format API profiles
+  const mapProfile = useCallback((item, type) => {
     const baseImageUrl = api.defaults.baseURL?.replace("/api/v1", "") || "";
     const imageUrl = item.profileImage
       ? `${baseImageUrl}/${item.profileImage.replace(/\\/g, "/")}`
-      : `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face&auto=format`;
+      : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face&auto=format";
 
-    const baseProfile = {
+    const base = {
       id: item._id,
       email: item.email,
       profileImage: imageUrl,
-      yearsExperience: item.yearsExperience,
-      state: item.state,
-      country: item.country,
-      location: `${item.city || item.state}, ${item.country}`,
+      location: `${item.city || item.state}, ${item.country || "Nigeria"}`,
       rating: item.rating || (Math.random() * 2 + 3).toFixed(1),
       verified: item.verified,
       type,
     };
 
-    if (type === "Vendor") {
-      return {
-        ...baseProfile,
-        name: item.businessName,
-        category: item.category,
-        description: item.description,
-        city: item.city,
-        website: item.website,
-        jobsCompleted: item.jobsCompleted,
-      };
-    }
+    return type === "Vendor"
+      ? {
+          ...base,
+          name: item.businessName,
+          category: item.category,
+          description: item.description,
+          website: item.website,
+          jobsCompleted: item.jobsCompleted || 0,
+        }
+      : {
+          ...base,
+          name: item.companyName,
+          category: item.specialization?.join(", "),
+          description: item.shortBio,
+          eventTypes: item.eventTypesHandled,
+          languages: item.languagesSpoken,
+        };
+  }, []);
 
-    if (type === "Planner") {
-      return {
-        ...baseProfile,
-        name: item.companyName,
-        category: item.specialization?.join(", "),
-        description: item.shortBio,
-        eventTypes: item.eventTypesHandled,
-        languages: item.languagesSpoken,
-      };
-    }
-
-    return baseProfile;
-  };
-
-  // Fetch profiles
+  // 🧠 Fetch vendor & planner profiles
   useEffect(() => {
     const fetchProfiles = async () => {
       setLoading(true);
       try {
-        const [vendorRes, plannerRes] = await Promise.all([
+        const [vendors, planners] = await Promise.all([
           api.get("/vendor-profile/all"),
           api.get("/planner-profile/all"),
         ]);
 
-        const combined = [
-          ...(vendorRes.data?.data || []).map((v) => mapProfile(v, "Vendor")),
-          ...(plannerRes.data?.data || []).map((p) => mapProfile(p, "Planner")),
-        ];
+        const vendorData = vendors.data?.data?.map((v) =>
+          mapProfile(v, "Vendor")
+        );
+        const plannerData = planners.data?.data?.map((p) =>
+          mapProfile(p, "Planner")
+        );
 
-        setProfiles(combined);
+        setProfiles([...(vendorData || []), ...(plannerData || [])]);
       } catch (err) {
-        console.error("Error fetching profiles:", err);
+        console.error("❌ Error fetching profiles:", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchProfiles();
-  }, []);
 
-  // Fetch bookmarks
+    fetchProfiles();
+  }, [mapProfile]);
+
+  // 💾 Fetch bookmarks
   useEffect(() => {
     const fetchBookmarks = async () => {
       if (!user) return setBookmarkedProfiles(new Set());
-
       try {
         const { data } = await api.get("/bookmarks/");
-        if (data.success) {
+        if (data.success && data.data) {
           const bookmarkedIds = new Set(
-            data.data.map((b) => b.targetId?._id).filter(Boolean)
+            data.data.map((b) => b.refId?._id || b.refId).filter(Boolean)
           );
           setBookmarkedProfiles(bookmarkedIds);
         }
       } catch (err) {
-        console.error("Error fetching bookmarks:", err);
+        console.error("❌ Error fetching bookmarks:", err);
       }
     };
+
     fetchBookmarks();
   }, [user, setBookmarkedProfiles]);
 
-  // Memoized data transformations
+  // 📅 Fetch bookings
+  useEffect(() => {
+    const fetchBookings = async () => {
+      setBookingsLoading(true);
+      try {
+        const res = await api.get("/bookings"); // or /events depending on backend
+        if (res.data.success) {
+          setBookings(res.data.data);
+        }
+      } catch (err) {
+        console.error("❌ Error fetching bookings:", err);
+      } finally {
+        setBookingsLoading(false);
+      }
+    };
+
+    if (activeSection === "bookings") fetchBookings();
+  }, [activeSection]);
+
+  // ⚙️ Memoized profiles
   const bookmarkedProfilesList = useMemo(
     () => profiles.filter((p) => bookmarkedProfiles.has(p.id)),
     [profiles, bookmarkedProfiles]
   );
 
   const filteredProfiles = useMemo(() => {
-    const base = activeSection === "saved" ? bookmarkedProfilesList : profiles;
+    const activeList =
+      activeSection === "saved" ? bookmarkedProfilesList : profiles;
     const searchLower = searchTerm.toLowerCase();
 
-    return base.filter((profile) => {
+    return activeList.filter((profile) => {
       const matchesSearch =
         profile.name?.toLowerCase().includes(searchLower) ||
         profile.category?.toLowerCase().includes(searchLower) ||
@@ -153,10 +168,9 @@ export default function ClientLounge({
     bookmarkedProfilesList,
   ]);
 
-  // Toggle bookmark
+  // 🩶 Bookmark toggle
   const toggleBookmark = async (profile) => {
     if (!user) return;
-
     const { id, type } = profile;
     const isBookmarked = bookmarkedProfiles.has(id);
     const targetModel = type === "Vendor" ? "VendorProfile" : "PlannerProfile";
@@ -170,21 +184,24 @@ export default function ClientLounge({
         return next;
       });
 
-      if (isBookmarked) await api.delete(`/bookmarks/${id}`);
-      else await api.post("/bookmarks/", { targetId: id, targetModel });
+      if (isBookmarked) {
+        await api.delete(`/bookmarks/${id}`);
+      } else {
+        await api.post("/bookmarks", { targetId: id, targetModel });
+      }
     } catch (err) {
-      // revert
+      console.error("❌ Error toggling bookmark:", err);
       setBookmarkedProfiles((prev) => {
         const next = new Set(prev);
         isBookmarked ? next.add(id) : next.delete(id);
         return next;
       });
-      console.error("Error toggling bookmark:", err);
     } finally {
       setBookmarkLoading(null);
     }
   };
 
+  // 🧭 Sidebar Navigation
   const navItems = [
     {
       id: "overview",
@@ -198,14 +215,36 @@ export default function ClientLounge({
       label: "Saved",
       count: bookmarkedProfiles.size,
     },
-    { id: "messages", icon: <MessageCircle size={20} />, label: "Messages" },
-    { id: "profile", icon: <User size={20} />, label: "My Profile" },
+    {
+      id: "bookings",
+      icon: <CalendarDays size={20} />,
+      label: "Bookings",
+    },
+    {
+      id: "messages",
+      icon: <MessageCircle size={20} />,
+      label: "Messages",
+    },
+    {
+      id: "profile",
+      icon: <User size={20} />,
+      label: "My Profile",
+    },
   ];
 
+  // 🎨 Dynamic content switcher
   const renderContent = () => {
     if (activeSection === "profile") return <ClientPresence user={user} />;
     if (activeSection === "messages") return <MessagesSection />;
+    if (activeSection === "bookings")
+      return (
+        <BookingsSection
+          bookings={bookings}
+          bookingsLoading={bookingsLoading}
+        />
+      );
 
+    // Default (overview/saved)
     return (
       <div className="space-y-6">
         {activeSection === "overview" && (
@@ -226,7 +265,7 @@ export default function ClientLounge({
           <div
             className={
               viewMode === "grid"
-                ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 auto-rows-fr"
+                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
                 : "flex flex-col space-y-4"
             }
           >
@@ -252,8 +291,8 @@ export default function ClientLounge({
             </h3>
             <p className="text-gray-500 text-lg max-w-md mx-auto leading-relaxed">
               {activeSection === "saved"
-                ? "Start saving professionals you like"
-                : "Try adjusting search terms or explore different categories"}
+                ? "Start saving planners or vendors you like"
+                : "Try a different search term or explore another category"}
             </p>
           </div>
         )}
@@ -261,6 +300,7 @@ export default function ClientLounge({
     );
   };
 
+  // 🏁 Render Layout
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-50 to-brand-royal-50/30">
       <Sidebar
@@ -269,6 +309,7 @@ export default function ClientLounge({
         setActiveSection={setActiveSection}
         navItems={navItems}
       />
+
       <main className="flex-1 flex flex-col min-w-0">
         <Topbar
           user={user}
@@ -277,6 +318,7 @@ export default function ClientLounge({
           viewMode={viewMode}
           setViewMode={setViewMode}
         />
+
         <section className="flex-1 p-8 overflow-y-auto">
           <div className="max-w-7xl mx-auto">{renderContent()}</div>
         </section>
@@ -291,6 +333,84 @@ export default function ClientLounge({
         navigate={navigate}
         user={user}
       />
+    </div>
+  );
+}
+
+// ✅ Bookings Section Component
+function BookingsSection({ bookings, bookingsLoading }) {
+  if (bookingsLoading)
+    return (
+      <div className="flex justify-center items-center py-20">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-x-brand-gold"></div>
+      </div>
+    );
+
+  if (!bookings?.length)
+    return (
+      <div className="bg-white rounded-xl p-12 text-center border border-gray-100 shadow-sm">
+        <h2 className="text-2xl font-semibold text-gray-800 mb-3">
+          No bookings yet
+        </h2>
+        <p className="text-gray-500">
+          Once you make event bookings, they’ll appear here.
+        </p>
+      </div>
+    );
+
+  return (
+    <div>
+      <h2 className="text-2xl font-semibold text-brand-navy mb-6">
+        Your Bookings
+      </h2>
+      <div className="bg-white shadow rounded-lg overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-brand-ivory/50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Event
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Vendor / Planner
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Date
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Status
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {bookings.map((b) => (
+              <tr key={b._id || b.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 text-gray-800">{b.eventType || "N/A"}</td>
+                <td className="px-6 py-4 text-gray-600">
+                  {b.vendor?.businessName ||
+                    b.planner?.companyName ||
+                    "Unassigned"}
+                </td>
+                <td className="px-6 py-4 text-gray-600">
+                  {new Date(b.date).toLocaleDateString()}
+                </td>
+                <td className="px-6 py-4">
+                  <span
+                    className={`px-3 py-1 text-sm font-medium rounded-full ${
+                      b.status === "confirmed"
+                        ? "bg-green-100 text-green-700"
+                        : b.status === "pending"
+                        ? "bg-yellow-100 text-yellow-700"
+                        : "bg-gray-200 text-gray-700"
+                    }`}
+                  >
+                    {b.status}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

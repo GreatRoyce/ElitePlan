@@ -5,6 +5,7 @@ const router = express.Router();
 const {
   getDashboard,
   updateEventStatus,
+  recruitVendor,
   addPaymentController,
   addNotification,
   addRating,
@@ -27,5 +28,8 @@ router.post("/ratings", addRating);
 
 // 🔔 Add notification
 router.post("/notifications", addNotification);
+
+
+router.post("/events/recruit-vendor", authMiddleware, recruitVendor);
 
 module.exports = router;

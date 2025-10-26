@@ -5,35 +5,24 @@ import elite from "../../../../src/assets/elite.png";
 
 export default function Sidebar({ activeSection, setActiveSection, navItems }) {
   const navigate = useNavigate();
-  const [isOpen, setIsOpen] = useState(false); // mobile menu
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <>
-  {/* Hamburger button for mobile */}
-<div className="sm:hidden mb-[142%] flex items-center justify-between bg-white border-b border-brand-gold/50 p-2 fixed">
-  <button
-    onClick={() => setIsOpen(true)}
-    className=" rounded-md hover:bg-brand-ivory transition-colors duration-200"
-  >
-    <MenuIcon size={24} className="text-brand-navy" />
-  </button>
+      {/* Mobile hamburger */}
+      <div className="sm:hidden mb-[142%] flex items-center justify-between bg-white border-b border-brand-gold/50 p-2 fixed">
+        <button
+          onClick={() => setIsOpen(true)}
+          className="rounded-md hover:bg-brand-ivory transition-colors duration-200"
+        >
+          <MenuIcon size={24} className="text-brand-navy" />
+        </button>
+      </div>
 
-  {/* Mobile logo centered */}
-  {/* <img
-    src={elite}
-    alt="Elite Plan"
-    className="h-12 w-12 object-contain"
-  /> */}
-</div>
-
-      {/* Sidebar for larger screens */}
+      {/* Desktop sidebar */}
       <aside className="hidden sm:flex w-64 bg-brand-ivory text-white border-r shadow-lg flex-col">
         <div className="flex justify-center border-b border-gray-200">
-          <img
-            src={elite}
-            alt="Elite Plan"
-            className="h-20 w-20 object-cover"
-          />
+          <img src={elite} alt="Elite Plan" className="h-20 w-20 object-cover" />
         </div>
 
         <nav className="flex-1 p-4 space-y-2">
@@ -71,7 +60,7 @@ export default function Sidebar({ activeSection, setActiveSection, navItems }) {
         </div>
       </aside>
 
-      {/* Mobile sidebar overlay */}
+      {/* Mobile overlay */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex">
           <div
@@ -81,11 +70,7 @@ export default function Sidebar({ activeSection, setActiveSection, navItems }) {
 
           <div className="relative w-64 bg-white h-full flex flex-col border-r border-gray-200 shadow-lg">
             <div className="flex justify-between items-center p-6 border-b border-gray-200">
-              <img
-                src={elite}
-                alt="Elite Plan"
-                className="h-12 w-12 object-contain"
-              />
+              <img src={elite} alt="Elite Plan" className="h-12 w-12 object-contain" />
               <button
                 onClick={() => setIsOpen(false)}
                 className="p-2 rounded-md hover:bg-gray-100 transition-colors"

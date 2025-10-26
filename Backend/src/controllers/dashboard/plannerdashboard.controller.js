@@ -1,4 +1,5 @@
 const PlannerDashboard = require("../../models/dashboard/plannerdashboard.model");
+const VendorDashboard = require("../../models/dashboard/vendordashboard.model");
 const { updateDashboard, addPayment } = require("../../helpers/planner/plannerhelpers");
 
 // @desc Fetch planner dashboard
@@ -198,6 +199,68 @@ const addRating = async (req, res) => {
 };
 
 
+// ✅ Add vendor to an event
+const recruitVendor = async (req, res) => {
+  try {
+    const { eventId, vendorId, role } = req.body;
+    const plannerId = req.user.id;
+
+    // 🔹 Find planner dashboard
+    const dashboard = await PlannerDashboard.findOne({ planner: plannerId });
+    if (!dashboard)
+      return res.status(404).json({ success: false, message: "Planner dashboard not found" });
+
+    // 🔹 Find target event
+    const event = dashboard.events.id(eventId);
+    if (!event)
+      return res.status(404).json({ success: false, message: "Event not found" });
+
+    // 🔹 Prevent duplicate vendor assignment
+    const alreadyAdded = event.vendors.some(v => v.vendor.toString() === vendorId);
+    if (alreadyAdded)
+      return res.status(400).json({ success: false, message: "Vendor already recruited" });
+
+    // 🔹 Add vendor to planner's event
+    event.vendors.push({ vendor: vendorId, role });
+    await dashboard.save();
+
+    // 🔹 Update vendor's dashboard to reflect assigned event
+    let vendorDashboard = await VendorDashboard.findOne({ vendor: vendorId });
+
+    // Create vendor dashboard if not found (failsafe)
+    if (!vendorDashboard) {
+      vendorDashboard = await VendorDashboard.create({
+        vendor: vendorId,
+        assignedEvents: [event._id],
+      });
+    } else {
+      // Prevent duplicates
+      if (!vendorDashboard.assignedEvents.includes(event._id)) {
+        vendorDashboard.assignedEvents.push(event._id);
+        await vendorDashboard.save();
+      }
+    }
+
+    // ✅ Optional: send notification to vendor
+    vendorDashboard.notifications.push({
+      message: `You’ve been assigned to event "${event.name}" by a planner.`,
+      type: "info",
+    });
+    await vendorDashboard.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Vendor successfully tied to event and synced to vendor dashboard",
+      data: {
+        event: event,
+        vendorDashboard: vendorDashboard.assignedEvents,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 
 // ✅ Default export object
 module.exports = {
@@ -206,4 +269,5 @@ module.exports = {
   addPaymentController,
   addNotification,
   addRating,
+  recruitVendor,
 };

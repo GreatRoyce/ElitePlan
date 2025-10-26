@@ -4,10 +4,11 @@ const clientDashboardSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
 
-    // Example dashboard data
+    // 🗓️ Bookings made by client
     bookings: [
       {
-        vendor: { type: mongoose.Schema.Types.ObjectId, ref: "Vendor" },
+        vendor: { type: mongoose.Schema.Types.ObjectId, ref: "VendorProfile" },
+        planner: { type: mongoose.Schema.Types.ObjectId, ref: "PlannerProfile" },
         eventType: String,
         date: Date,
         status: {
@@ -18,6 +19,7 @@ const clientDashboardSchema = new mongoose.Schema(
       },
     ],
 
+    // 💳 Payments for bookings
     payments: [
       {
         bookingId: { type: mongoose.Schema.Types.ObjectId },
@@ -27,13 +29,24 @@ const clientDashboardSchema = new mongoose.Schema(
       },
     ],
 
+    // 🔖 Bookmarks — can be either vendor or planner
     bookmarks: [
       {
-        vendorId: { type: mongoose.Schema.Types.ObjectId, ref: "Vendor" },
+        type: {
+          type: String,
+          enum: ["vendor", "planner"],
+          required: true,
+        },
+        refId: {
+          type: mongoose.Schema.Types.ObjectId,
+          required: true,
+          refPath: "bookmarks.type", // dynamic reference
+        },
         addedAt: { type: Date, default: Date.now },
       },
     ],
 
+    // 🔔 Notifications
     notifications: [
       {
         message: String,

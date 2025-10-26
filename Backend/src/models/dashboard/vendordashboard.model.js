@@ -1,14 +1,10 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
-// ================================
-// 🧩 Sub-Schemas
-// ================================
-
-// Product or service order
+// Product or service order schema
 const orderSchema = new Schema({
   title: { type: String, required: true },
-  client: { type: Schema.Types.ObjectId, ref: "Client", required: true },
+  client: { type: Schema.Types.ObjectId, ref: "ClientProfile", required: true },
   event: { type: Schema.Types.ObjectId, ref: "Event" },
   status: {
     type: String,
@@ -27,7 +23,7 @@ const orderSchema = new Schema({
   updatedAt: { type: Date, default: Date.now },
 });
 
-// Notifications
+// Notifications schema
 const notificationSchema = new Schema({
   message: { type: String, required: true },
   type: {
@@ -40,17 +36,19 @@ const notificationSchema = new Schema({
 });
 
 // ================================
-// 🧮 Main Dashboard Schema
+// 🧮 Main Vendor Dashboard Schema
 // ================================
-
 const vendorDashboardSchema = new Schema(
   {
     vendor: {
       type: Schema.Types.ObjectId,
-      ref: "Vendor",
+      ref: "VendorProfile",
       required: true,
       unique: true,
     },
+
+    // 📌 New field — events assigned to this vendor
+    assignedEvents: [{ type: Schema.Types.ObjectId, ref: "Event" }],
 
     // Core business metrics
     pendingOrders: { type: Number, default: 0 },
@@ -66,13 +64,12 @@ const vendorDashboardSchema = new Schema(
     // Feedback & ratings
     ratings: [
       {
-        client: { type: Schema.Types.ObjectId, ref: "Client" },
+        client: { type: Schema.Types.ObjectId, ref: "ClientProfile" },
         score: { type: Number, min: 1, max: 5 },
         comment: { type: String },
         date: { type: Date, default: Date.now },
       },
     ],
-
     averageRating: { type: Number, default: 0 },
 
     // Communication & alerts

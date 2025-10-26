@@ -1,97 +1,59 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
-const plannerDashboardSchema = new mongoose.Schema({
-  planner: { type: Schema.Types.ObjectId, ref: 'Planner', required: true },
+// Sub-schema for vendor assignments to an event
+const vendorAssignmentSchema = new Schema({
+  vendor: { type: Schema.Types.ObjectId, ref: "VendorProfile", required: true },
+  role: { type: String }, // e.g. "Decorator", "Caterer", "Photographer"
+  joinedAt: { type: Date, default: Date.now },
+});
 
-  // Events handled by this planner
-  events: [
-    {
-      client: { type: Schema.Types.ObjectId, ref: 'Client', required: true },
-      title: { type: String, required: true },
-      description: { type: String },
-      startDate: { type: Date, required: true },
-      endDate: { type: Date, required: true },
-      status: {
-        type: String,
-        enum: ['pending', 'booked', 'ongoing', 'completed', 'cancelled'],
-        default: 'pending',
-      },
-      vendors: [{ type: Schema.Types.ObjectId, ref: 'Vendor' }],
-      tasks: [
-        {
-          title: { type: String },
-          dueDate: { type: Date },
-          status: { type: String, enum: ['pending', 'done'], default: 'pending' },
-        },
-      ],
-      payments: [
-        {
-          amount: { type: Number, required: true },
-          status: {
-            type: String,
-            enum: ['pending', 'paid', 'failed'],
-            default: 'pending',
-          },
-          method: { type: String }, // e.g., 'card', 'bank transfer', 'cash'
-          createdAt: { type: Date, default: Date.now },
-        },
-      ],
-      createdAt: { type: Date, default: Date.now },
-      updatedAt: { type: Date, default: Date.now },
-    },
-  ],
-
-  // Dashboard metrics
-  pendingRequests: { type: Number, default: 0 },
-  bookedEvents: { type: Number, default: 0 },
-  ongoingEvents: { type: Number, default: 0 },
-  completedEvents: { type: Number, default: 0 },
-  cancelledEvents: { type: Number, default: 0 },
-
-  // Revenue summary
-  totalRevenue: { type: Number, default: 0 },
-  pendingRevenue: { type: Number, default: 0 },
-
-  // Notifications for the planner
-  notifications: [
-    {
-      message: { type: String, required: true },
-      type: { type: String, default: 'info' },
-      read: { type: Boolean, default: false },
-      createdAt: { type: Date, default: Date.now },
-    },
-  ],
-
-  // Upcoming deadlines
-  upcomingDeadlines: [
-    {
-      event: { type: Schema.Types.ObjectId, ref: 'Event', required: true },
-      taskTitle: { type: String, required: true },
-      dueDate: { type: Date, required: true },
-      status: { type: String, enum: ['pending', 'done'], default: 'pending' },
-    },
-  ],
-
-  // ⭐ Ratings (added section)
-  ratings: [
-    {
-      client: { type: Schema.Types.ObjectId, ref: 'Client', required: true },
-      score: { type: Number, required: true, min: 1, max: 5 },
-      comment: { type: String },
-      date: { type: Date, default: Date.now },
-    },
-  ],
-  averageRating: { type: Number, default: 0 },
-
+const eventSchema = new Schema({
+  name: { type: String, required: true },
+  date: { type: Date, required: true },
+  client: { type: Schema.Types.ObjectId, ref: "ClientProfile", required: true },
+  status: {
+    type: String,
+    enum: ["upcoming", "ongoing", "completed", "cancelled"],
+    default: "upcoming",
+  },
+  vendors: [vendorAssignmentSchema],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
 
-// Auto-update updatedAt on save
-plannerDashboardSchema.pre('save', function (next) {
-  this.updatedAt = Date.now();
-  next();
+const notificationSchema = new Schema({
+  message: { type: String, required: true },
+  type: {
+    type: String,
+    enum: ["info", "alert", "warning", "success"],
+    default: "info",
+  },
+  read: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
 });
 
-module.exports = mongoose.model('PlannerDashboard', plannerDashboardSchema);
+// ✅ Fixed: properly nested upcomingDeadlines
+const plannerDashboardSchema = new Schema(
+  {
+    planner: {
+      type: Schema.Types.ObjectId,
+      ref: "Planner",
+      required: true,
+      unique: true,
+    },
+    events: [eventSchema],
+    notifications: [notificationSchema],
+
+    upcomingDeadlines: [
+      {
+        title: { type: String },
+        dueDate: { type: Date },
+        event: { type: Schema.Types.ObjectId, ref: "Event" },
+      },
+    ],
+  },
+  { timestamps: true }
+);
+
+module.exports = mongoose.model("PlannerDashboard", plannerDashboardSchema);

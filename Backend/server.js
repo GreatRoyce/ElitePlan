@@ -3,6 +3,8 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const morgan = require("morgan");
 const path = require("path");
+require("./src/models/event.model");
+
 const connectDB = require("./database/dbConnection");
 
 dotenv.config();
@@ -21,6 +23,8 @@ const vendorDashboardRoutes = require("./src/routes/dashboard/vendordashboard.ro
 const clientDashboardRoutes = require("./src/routes/dashboard/clientdashboard.routes");
 const bookmarkRoutes = require("./src/routes/bookmark.routes");
 const initialConsultationRoutes = require("./src/routes/initialConsultation.routes");
+const notificationRouter = require("./src/routes/notification.routes");
+
 
 // =======================
 // ⚙️ Database Connection
@@ -72,6 +76,9 @@ app.use("/api/v1/planner-dashboard", plannerRouter);
 app.use("/api/v1", vendorRouter);
 app.use("/api/v1/vendor-dashboard", vendorDashboardRoutes);
 app.use("/api/v1/client-dashboard", clientDashboardRoutes);
+app.use("/api/v1/notifications", notificationRouter);
+
+
 
 // Auth
 app.use("/api/v1/auth", authRoutes);
