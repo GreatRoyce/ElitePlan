@@ -22,7 +22,7 @@ const plannerProfileSchema = new Schema(
     gallery: [{ type: String }],
 
     // ========== Professional Details ==========
-    specialization: [{ type: String }],
+    specialization: [{ type: String, required: true,}],
     yearsExperience: { type: Number, min: 0 },
     shortBio: { type: String, maxlength: 1000 },
     plannerType: {

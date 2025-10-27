@@ -9,6 +9,7 @@ import DashboardCards from "./PlannerPieces/DashboardCards";
 import Notifications from "./PlannerPieces/Notifications";
 import PendingRequests from "./PlannerPieces/PendingRequests";
 import Messages from "./PlannerPieces/MessagePanel";
+import Profile from "./PlannerPieces/Profile";
 
 export default function PlannerLounge() {
   const [dashboard, setDashboard] = useState(null);
@@ -64,6 +65,33 @@ export default function PlannerLounge() {
     );
 
   const companyName = dashboard?.companyName || "ElitePlan"; // fallback
+  const plannerProfile = dashboard?.plannerProfile || { username: "Planner" };
+
+  // Prepare counts for Sidebar badges
+  const counts = {
+    requests: dashboard?.pendingRequests?.length || 0,
+    messages: dashboard?.messages?.length || 0,
+    notifications: dashboard?.notifications?.length || 0,
+  };
+
+  // Save updated profile and update dashboard state
+  const handleProfileSave = async (updatedProfile) => {
+    try {
+      const res = await api.put("/planner-profile", updatedProfile);
+      if (res.data.success) {
+        setDashboard((prev) => ({
+          ...prev,
+          plannerProfile: res.data.data,
+        }));
+        alert("Profile updated successfully!");
+      } else {
+        alert("Failed to update profile.");
+      }
+    } catch (err) {
+      console.error("❌ Error updating profile:", err);
+      alert("Server error while updating profile.");
+    }
+  };
 
   // Render main content based on sidebar selection
   const renderContent = () => {
@@ -84,12 +112,13 @@ export default function PlannerLounge() {
         return <PendingRequests requests={dashboard.pendingRequests} />;
       case "messages":
         return <Messages messages={dashboard.messages} />;
+      case "profile":
+        return <Profile planner={plannerProfile} onSave={handleProfileSave} />;
       default:
         return <Overview events={dashboard.events} />;
     }
   };
 
-  // Logout handler example
   const handleLogout = () => {
     console.log("Logging out...");
     // TODO: clear tokens, redirect to login page
@@ -100,6 +129,8 @@ export default function PlannerLounge() {
       {/* Sidebar */}
       <Sidebar
         companyName={companyName}
+        user={plannerProfile}
+        counts={counts}
         activeSection={activeSection}
         setActiveSection={setActiveSection}
         onLogout={handleLogout}
@@ -118,7 +149,7 @@ export default function PlannerLounge() {
         <main className="flex-1 overflow-y-auto p-6 space-y-8">
           {renderContent()}
 
-          {/* Notifications dropdown */}
+          {/* Notifications dropdown */}av
           {showNotifications && (
             <Notifications
               notifications={dashboard.notifications}

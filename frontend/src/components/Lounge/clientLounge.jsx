@@ -27,8 +27,8 @@ export default function ClientLounge({
   const [bookmarkLoading, setBookmarkLoading] = useState(null);
   const [activeSection, setActiveSection] = useState("overview");
   const [viewMode, setViewMode] = useState("grid");
-  const [bookings, setBookings] = useState([]); // NEW
-  const [bookingsLoading, setBookingsLoading] = useState(false); // NEW
+  const [bookings, setBookings] = useState([]);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
 
   const navigate = useNavigate();
 
@@ -96,16 +96,22 @@ export default function ClientLounge({
     fetchProfiles();
   }, [mapProfile]);
 
-  // 💾 Fetch bookmarks
+  // 💾 Fetch bookmarks exactly like ClientBookmark
   useEffect(() => {
     const fetchBookmarks = async () => {
-      if (!user) return setBookmarkedProfiles(new Set());
+      if (!user) {
+        console.log("👤 No user logged in, clearing bookmarks");
+        return setBookmarkedProfiles(new Set());
+      }
       try {
-        const { data } = await api.get("/bookmarks/");
+        const { data } = await api.get("/bookmarks");
+        console.log("📖 Bookmarks fetched:", data.data);
+
         if (data.success && data.data) {
           const bookmarkedIds = new Set(
-            data.data.map((b) => b.refId?._id || b.refId).filter(Boolean)
+            data.data.map((b) => b.targetId?._id).filter(Boolean)
           );
+          console.log("⭐ Bookmarked profile IDs:", bookmarkedIds);
           setBookmarkedProfiles(bookmarkedIds);
         }
       } catch (err) {
@@ -121,26 +127,24 @@ export default function ClientLounge({
     const fetchBookings = async () => {
       setBookingsLoading(true);
       try {
-        const res = await api.get("/bookings"); // or /events depending on backend
-        if (res.data.success) {
-          setBookings(res.data.data);
-        }
+        const res = await api.get("/bookings");
+        if (res.data.success) setBookings(res.data.data);
       } catch (err) {
         console.error("❌ Error fetching bookings:", err);
       } finally {
         setBookingsLoading(false);
       }
     };
-
     if (activeSection === "bookings") fetchBookings();
   }, [activeSection]);
 
-  // ⚙️ Memoized profiles
+  // ⚙️ Memoized bookmarks
   const bookmarkedProfilesList = useMemo(
     () => profiles.filter((p) => bookmarkedProfiles.has(p.id)),
     [profiles, bookmarkedProfiles]
   );
 
+  // ⚙️ Filtered profiles
   const filteredProfiles = useMemo(() => {
     const activeList =
       activeSection === "saved" ? bookmarkedProfilesList : profiles;
@@ -168,29 +172,40 @@ export default function ClientLounge({
     bookmarkedProfilesList,
   ]);
 
-  // 🩶 Bookmark toggle
+  // 🩶 Bookmark toggle exactly like ClientBookmark
   const toggleBookmark = async (profile) => {
-    if (!user) return;
+    if (!user) {
+      console.log("🔒 User not authenticated, redirecting to login");
+      navigate("/");
+      return;
+    }
+
     const { id, type } = profile;
     const isBookmarked = bookmarkedProfiles.has(id);
     const targetModel = type === "Vendor" ? "VendorProfile" : "PlannerProfile";
 
-    setBookmarkLoading(id);
+    console.log("📌 Toggling bookmark for:", profile.name, "ID:", id);
 
+    setBookmarkLoading(id);
     try {
+      // Optimistic UI update
       setBookmarkedProfiles((prev) => {
         const next = new Set(prev);
         isBookmarked ? next.delete(id) : next.add(id);
         return next;
       });
 
-      if (isBookmarked) {
-        await api.delete(`/bookmarks/${id}`);
-      } else {
-        await api.post("/bookmarks", { targetId: id, targetModel });
-      }
+      // API call
+      if (isBookmarked) await api.delete(`/bookmarks/${id}`);
+      else await api.post("/bookmarks", { targetId: id, targetModel });
+
+      console.log(
+        `✅ Bookmark ${isBookmarked ? "removed" : "added"} for ID:`,
+        id
+      );
     } catch (err) {
       console.error("❌ Error toggling bookmark:", err);
+      // Rollback
       setBookmarkedProfiles((prev) => {
         const next = new Set(prev);
         isBookmarked ? next.add(id) : next.delete(id);
@@ -215,24 +230,12 @@ export default function ClientLounge({
       label: "Saved",
       count: bookmarkedProfiles.size,
     },
-    {
-      id: "bookings",
-      icon: <CalendarDays size={20} />,
-      label: "Bookings",
-    },
-    {
-      id: "messages",
-      icon: <MessageCircle size={20} />,
-      label: "Messages",
-    },
-    {
-      id: "profile",
-      icon: <User size={20} />,
-      label: "My Profile",
-    },
+    { id: "bookings", icon: <CalendarDays size={20} />, label: "Bookings" },
+    { id: "messages", icon: <MessageCircle size={20} />, label: "Messages" },
+    { id: "profile", icon: <User size={20} />, label: "My Profile" },
   ];
 
-  // 🎨 Dynamic content switcher
+  // 🎨 Dynamic content
   const renderContent = () => {
     if (activeSection === "profile") return <ClientPresence user={user} />;
     if (activeSection === "messages") return <MessagesSection />;
@@ -300,7 +303,6 @@ export default function ClientLounge({
     );
   };
 
-  // 🏁 Render Layout
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-50 to-brand-royal-50/30">
       <Sidebar
@@ -337,7 +339,7 @@ export default function ClientLounge({
   );
 }
 
-// ✅ Bookings Section Component
+// ✅ Bookings Section
 function BookingsSection({ bookings, bookingsLoading }) {
   if (bookingsLoading)
     return (
@@ -384,7 +386,9 @@ function BookingsSection({ bookings, bookingsLoading }) {
           <tbody className="divide-y divide-gray-200">
             {bookings.map((b) => (
               <tr key={b._id || b.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 text-gray-800">{b.eventType || "N/A"}</td>
+                <td className="px-6 py-4 text-gray-800">
+                  {b.eventType || "N/A"}
+                </td>
                 <td className="px-6 py-4 text-gray-600">
                   {b.vendor?.businessName ||
                     b.planner?.companyName ||
