@@ -10,6 +10,7 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
+import { FaLocationDot } from "react-icons/fa6";
 import {
   FaFacebookSquare,
   FaInstagramSquare,
@@ -72,7 +73,7 @@ export default function Profile({ planner = {} }) {
     { id: "basic", label: "Basic Info", icon: <Users size={16} /> },
     { id: "professional", label: "Professional", icon: <Camera size={16} /> },
     { id: "gallery", label: "Gallery", icon: <Plus size={16} /> },
-    { id: "location", label: "Location", icon: <FaFacebookSquare size={16} /> },
+    { id: "location", label: "Location", icon: <FaLocationDot size={16} /> },
     { id: "social", label: "Social", icon: <CgWebsite size={16} /> },
   ];
 

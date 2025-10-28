@@ -18,6 +18,9 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "./context/AuthContext";
 import ClientPresence from "./components/Presence/clientPresence";
 import Connect from "./pages/connect"; // Landing page
+import FeaturesSection from "./pages/featuresSection";
+import WhyChooseSection from "./pages/WhyChooseSection";
+import HowItWorks from "./pages/howItWorks";
 
 /* -----------------------------
    Layout Wrapper
@@ -27,7 +30,11 @@ function Layout({ children }) {
   const location = useLocation();
 
   // Only show Nav on the landing page
-  const showNav = location.pathname === "/";
+  const showNav =
+    location.pathname === "/" ||
+    location.pathname === "/features-section" ||
+    location.pathname === "/why-choose-section" ||
+    location.pathname === "/how-it-works";
 
   return (
     <>
@@ -51,6 +58,33 @@ function AppContent() {
         element={
           <Layout>
             <Connect />
+          </Layout>
+        }
+      />
+
+      <Route
+        path="/features-section"
+        element={
+          <Layout>
+            <FeaturesSection />
+          </Layout>
+        }
+      />
+
+      <Route
+        path="/why-choose-section"
+        element={
+          <Layout>
+            <WhyChooseSection />
+          </Layout>
+        }
+      />
+
+      <Route
+        path="/how-it-works"
+        element={
+          <Layout>
+            <HowItWorks />
           </Layout>
         }
       />
@@ -84,7 +118,7 @@ function AppContent() {
           </ProtectedRoute>
         }
       />
-      <Route
+      {/* <Route
         path="/presence"
         element={
           <ProtectedRoute>
@@ -93,7 +127,7 @@ function AppContent() {
             </Layout>
           </ProtectedRoute>
         }
-      />
+      /> */}
       <Route
         path="/clientpresence"
         element={

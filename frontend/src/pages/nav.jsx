@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { Link } from "react-router-dom";
-import SignUpForm from "../components/Auth/signupform"; 
+import SignUpForm from "../components/Auth/signupform";
 
 function Nav({ user, handleLogout }) {
   const [loggingOut, setLogout] = useState(false);
@@ -23,10 +23,9 @@ function Nav({ user, handleLogout }) {
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
   const navItems = [
-    { label: "How it works", path: "/lounge" },
-    { label: "Features", path: "/presence" },
-    { label: "Why Choose Us", path: "/suite" },
-    
+    { label: "How it works", path: "/how-it-works" },
+    { label: "Features", path: "/features-section" },
+    { label: "Why Choose Us", path: "/why-choose-section" },
   ];
 
   // 👇 Scroll-based visibility
@@ -62,7 +61,7 @@ function Nav({ user, handleLogout }) {
         <div className="flex items-center justify-between w-full max-w-6xl">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <Link to="/lounge" onClick={closeMobileMenu}>
+            <Link to="/" onClick={closeMobileMenu}>
               <img
                 src="/logo/elite.png"
                 alt="ElitePlan Logo"
@@ -122,7 +121,11 @@ function Nav({ user, handleLogout }) {
               onClick={toggleMobileMenu}
               className="p-2 text-brand-ivory hover:text-brand-gold transition-colors duration-200"
             >
-              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {isMobileMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
             </button>
           </div>
         </div>
@@ -155,7 +158,11 @@ function Nav({ user, handleLogout }) {
                 </button>
               ) : (
                 <>
-                  <MobileNavItem label="Login" path="/login" onClick={closeMobileMenu} />
+                  <MobileNavItem
+                    label="Login"
+                    path="/login"
+                    onClick={closeMobileMenu}
+                  />
                   <button
                     onClick={() => {
                       closeMobileMenu();

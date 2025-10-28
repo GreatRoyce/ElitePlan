@@ -45,7 +45,7 @@ export default function Topbar({
   }, [showNotifications, user]);
 
   return (
-    <header className="bg-white border-b border-gray-200 pb-4 pl-12 pr-8 flex items-center justify-between relative">
+    <header className="bg-white border-b mt-16 border-gray-200 pb-4 pl-12 pr-8 flex items-center justify-between relative">
       {/* Search */}
       <div className="flex items-center bg-gray-100 rounded-lg px-4 py-3 w-96">
         <Search size={18} className="text-gray-400" />

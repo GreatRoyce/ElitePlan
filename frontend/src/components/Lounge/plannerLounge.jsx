@@ -149,7 +149,7 @@ export default function PlannerLounge() {
         <main className="flex-1 overflow-y-auto p-6 space-y-8">
           {renderContent()}
 
-          {/* Notifications dropdown */}av
+          {/* Notifications dropdown */}
           {showNotifications && (
             <Notifications
               notifications={dashboard.notifications}
