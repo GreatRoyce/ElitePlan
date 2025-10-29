@@ -130,11 +130,9 @@ function ClientPresence({ user, onClose }) {
 
       let res;
       if (formData._id) {
-        res = await api.put(
-          `/client-profile/update/${formData._id}`,
-          data,
-          { headers: { "Content-Type": "multipart/form-data" } }
-        );
+        res = await api.put(`/client-profile/update/${formData._id}`, data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
       } else {
         res = await api.post("/client-profile/create", data, {
           headers: { "Content-Type": "multipart/form-data" },

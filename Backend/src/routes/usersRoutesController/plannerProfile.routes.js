@@ -2,29 +2,23 @@ const express = require("express");
 const router = express.Router();
 const upload = require("../../../multer/multer");
 const authMiddleware = require("../../middleware/authMiddleware");
+
 const {
-  createPlannerProfile,
-  getPlannerProfiles,
-  getPlannerProfileById, // This was already correct
+  createOrGetPlannerProfile,
   updatePlannerProfile,
+  getCurrentPlannerProfile,
+  getPlannerProfiles,
+  getPlannerProfileById,
   deletePlannerProfile,
-  getPlannersBySpecialization, // optional filter
+  getPlannersBySpecialization,
 } = require("../../controllers/usersProfileController/plannerProfile.controller");
 
-// =======================
-// 🎯 Planner Profile Routes
-// =======================
+// ===================================================
+// 🎯 PLANNER PROFILE ROUTES
+// ===================================================
 
-// ✅ Create planner profile (only logged-in planners or admins)
-router.post(
-  "/create",
-  authMiddleware(["planner", "admin"]),
-  upload.fields([
-    { name: "profileImage", maxCount: 1 },
-    { name: "gallery", maxCount: 10 },
-  ]),
-  createPlannerProfile
-);
+// ✅ Auto-create or get current logged-in planner profile
+router.get("/me", authMiddleware(["planner"]), getCurrentPlannerProfile);
 
 // ✅ Get all planner profiles (public)
 router.get("/all", getPlannerProfiles);
@@ -32,10 +26,10 @@ router.get("/all", getPlannerProfiles);
 // ✅ Filter planners by specialization (public)
 router.get("/specialization/:specialization", getPlannersBySpecialization);
 
-// ✅ Update planner profile (planner or admin)
+// ✅ Update planner profile (with image + gallery upload)
 router.put(
-  "/update/:id",
-  authMiddleware(["planner", "admin"]),
+  "/update/me",
+  authMiddleware(["planner"]),
   upload.fields([
     { name: "profileImage", maxCount: 1 },
     { name: "gallery", maxCount: 10 },
@@ -43,14 +37,14 @@ router.put(
   updatePlannerProfile
 );
 
-// ✅ Delete planner profile (planner or admin)
+// ✅ Delete own planner profile
 router.delete(
-  "/delete/:id",
-  authMiddleware(["planner", "admin"]),
+  "/delete/me",
+  authMiddleware(["planner"]),
   deletePlannerProfile
 );
 
-// ✅ Get single planner profile by ID (public) - MUST BE LAST
+// ✅ Get a specific planner by ID (public)
 router.get("/:id", getPlannerProfileById);
 
 module.exports = router;

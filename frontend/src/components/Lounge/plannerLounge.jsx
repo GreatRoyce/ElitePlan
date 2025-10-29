@@ -1,5 +1,6 @@
+// src/components/PlannerPieces/PlannerLounge.jsx
 import React, { useEffect, useState, useRef } from "react";
-import api from "../../../src/utils/axios";
+import api from "../../utils/axios";
 
 // Components
 import Sidebar from "./PlannerPieces/Sidebar";
@@ -64,36 +65,23 @@ export default function PlannerLounge() {
       </div>
     );
 
-  const companyName = dashboard?.companyName || "ElitePlan"; // fallback
-  const plannerProfile = dashboard?.plannerProfile || { username: "Planner" };
+  const companyName = dashboard?.companyName || "ElitePlan";
+  const plannerProfile = dashboard?.plannerProfile || null;
 
-  // Prepare counts for Sidebar badges
   const counts = {
     requests: dashboard?.pendingRequests?.length || 0,
     messages: dashboard?.messages?.length || 0,
     notifications: dashboard?.notifications?.length || 0,
   };
 
-  // Save updated profile and update dashboard state
-  const handleProfileSave = async (updatedProfile) => {
-    try {
-      const res = await api.put("/planner-profile", updatedProfile);
-      if (res.data.success) {
-        setDashboard((prev) => ({
-          ...prev,
-          plannerProfile: res.data.data,
-        }));
-        alert("Profile updated successfully!");
-      } else {
-        alert("Failed to update profile.");
-      }
-    } catch (err) {
-      console.error("❌ Error updating profile:", err);
-      alert("Server error while updating profile.");
-    }
+  // Save handler passed to Profile
+  const handleProfileSave = (updatedProfile) => {
+    setDashboard((prev) => ({
+      ...prev,
+      plannerProfile: updatedProfile,
+    }));
   };
 
-  // Render main content based on sidebar selection
   const renderContent = () => {
     switch (activeSection) {
       case "overview":
@@ -113,7 +101,9 @@ export default function PlannerLounge() {
       case "messages":
         return <Messages messages={dashboard.messages} />;
       case "profile":
-        return <Profile planner={plannerProfile} onSave={handleProfileSave} />;
+        return (
+          <Profile planner={plannerProfile} onSave={handleProfileSave} />
+        );
       default:
         return <Overview events={dashboard.events} />;
     }
@@ -149,7 +139,6 @@ export default function PlannerLounge() {
         <main className="flex-1 overflow-y-auto p-6 space-y-8">
           {renderContent()}
 
-          {/* Notifications dropdown */}
           {showNotifications && (
             <Notifications
               notifications={dashboard.notifications}

@@ -1,195 +1,108 @@
 const PlannerProfile = require("../../models/plannerProfile.model");
 const User = require("../../models/user.model");
+const path = require("path");
 
-// ===============================
-// 🎯 CREATE PLANNER PROFILE
-// ===============================
-const createPlannerProfile = async (req, res) => {
+// 🔧 Helper: Normalize to array
+const toArray = (val) => (Array.isArray(val) ? val : val ? [val] : []);
+
+// 🔧 Helper: Normalize file path for all OS
+const normalizePath = (filePath) => filePath?.replace(/\\/g, "/");
+
+// ===================================================
+// 🎯 CREATE OR GET EMPTY PLANNER PROFILE (Auto-Creates)
+// ===================================================
+const createOrGetPlannerProfile = async (req, res) => {
   try {
-    const {
-      companyName,
-      specialization,
-      yearsExperience,
-      shortBio,
-      state,
-      country,
-      eventTypesHandled,
-      ongoingProjects,
-      languagesSpoken,
-      serviceRegions,
-      certifications,
-      preferredVendorCategories,
-      plannerType,
-      socialLinks,
-    } = req.body;
-
-    // ✅ Authenticated user
-    const userId = req.user?.id;
-    if (!userId)
-      return res
-        .status(401)
-        .json({ success: false, message: "Unauthorized - no user ID found" });
-
-    const user = await User.findById(userId);
-    if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
-
-    // ✅ Prevent duplicate planner profiles
-    const existing = await PlannerProfile.findOne({ userId });
-    if (existing)
-      return res.status(400).json({
-        success: false,
-        message: "You already have a planner profile.",
-      });
-
-    // ✅ Handle file uploads
-    const profileImage =
-      req.files?.profileImage?.[0]?.path.replace(/\\/g, "/") || null;
-    const gallery = req.files?.gallery
-      ? req.files.gallery.map((file) => file.path.replace(/\\/g, "/"))
-      : [];
-
-    // ✅ Create profile
-    const newProfile = new PlannerProfile({
-      userId,
-      fullName: user.username,
-      email: user.email,
-      phonePrimary: user.phone || "N/A",
-      companyName,
-      specialization: Array.isArray(specialization)
-        ? specialization
-        : [specialization],
-      yearsExperience,
-      shortBio,
-      state,
-      country,
-      eventTypesHandled,
-      ongoingProjects,
-      languagesSpoken,
-      serviceRegions,
-      certifications,
-      preferredVendorCategories,
-      plannerType,
-      socialLinks,
-      profileImage,
-      gallery,
-    });
-
-    await newProfile.save();
-
-    res.status(201).json({
-      success: true,
-      message: "Planner profile created successfully",
-      data: newProfile,
-    });
-  } catch (error) {
-    console.error("Create Planner Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error creating planner profile",
-      error: error.message,
-    });
-  }
-};
-
-// ===============================
-// 📋 GET ALL PLANNER PROFILES (PUBLIC)
-// ===============================
-const getPlannerProfiles = async (req, res) => {
-  try {
-    const planners = await PlannerProfile.find()
-      .populate("userId", "username email")
-      .select("-__v");
-
-    res.status(200).json({
-      success: true,
-      count: planners.length,
-      data: planners,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve planners",
-      error: error.message,
-    });
-  }
-};
-
-// ===============================
-// 🔍 GET SINGLE PLANNER BY ID (PUBLIC)
-// ===============================
-const getPlannerProfileById = async (req, res) => {
-  try {
-    const planner = await PlannerProfile.findById(req.params.id)
-      .populate("userId", "username email")
-      .populate("reviews.reviewerId", "username");
-
-    if (!planner)
-      return res
-        .status(404)
-        .json({ success: false, message: "Planner profile not found" });
-
-    res.status(200).json({ success: true, data: planner });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch planner profile",
-      error: error.message,
-    });
-  }
-};
-
-// ===============================
-// ✏️ UPDATE PLANNER PROFILE (PLANNER OR ADMIN)
-// ===============================
-const updatePlannerProfile = async (req, res) => {
-  try {
-    const { id } = req.params;
     const userId = req.user?.id;
     if (!userId)
       return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    const profile = await PlannerProfile.findById(id);
-    if (!profile)
-      return res
-        .status(404)
-        .json({ success: false, message: "Planner profile not found" });
+    const user = await User.findById(userId);
+    if (!user)
+      return res.status(404).json({ success: false, message: "User not found" });
 
-    // Restrict access
-    if (profile.userId.toString() !== userId && req.user.role !== "admin") {
-      return res.status(403).json({
-        success: false,
-        message: "Forbidden: You can only update your own profile",
+    let profile = await PlannerProfile.findOne({ userId });
+
+    // 🧱 Auto-create minimal profile if none exists
+    if (!profile) {
+      profile = new PlannerProfile({
+        userId,
+        fullName: user.username || "N/A",
+        email: user.email,
+        phonePrimary: user.phone || "N/A",
+        companyName: "N/A",
+        specialization: [],
+        gallery: [],
+        socialLinks: {},
       });
+
+      await profile.save();
     }
 
-    const updates = req.body;
+    return res.status(200).json({
+      success: true,
+      data: profile,
+    });
+  } catch (err) {
+    console.error("Error creating/getting planner profile:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while creating/fetching profile",
+      error: err.message,
+    });
+  }
+};
 
-    // ✅ Handle media updates
-    if (req.files?.profileImage) {
-      updates.profileImage = req.files.profileImage[0].path.replace(/\\/g, "/");
-    }
-    if (req.files?.gallery) {
-      updates.gallery = req.files.gallery.map((file) =>
-        file.path.replace(/\\/g, "/")
-      );
+// ===================================================
+// ✏️ UPDATE PLANNER PROFILE (Planner Only)
+// ===================================================
+const updatePlannerProfile = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId)
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    let profile = await PlannerProfile.findOne({ userId });
+    if (!profile) return createOrGetPlannerProfile(req, res);
+
+    const updates = { ...req.body };
+
+    // 🧩 Normalize array fields
+    updates.specialization = toArray(updates.specialization);
+
+    // 🖼 Handle image uploads
+    if (req.files) {
+      if (req.files.gallery) {
+        updates.gallery = req.files.gallery.map((f) => normalizePath(f.path));
+      }
+      if (req.files.profileImage) {
+        updates.profileImage = normalizePath(req.files.profileImage[0].path);
+      }
     }
 
+    // 🌐 Merge social links (avoid overwriting missing keys)
+    if (updates.socialLinks) {
+      updates.socialLinks = {
+        ...profile.socialLinks,
+        ...updates.socialLinks,
+      };
+    }
+
+    // 🧱 Update profile
     const updated = await PlannerProfile.findByIdAndUpdate(
-      id,
+      profile._id,
       { ...updates, lastUpdated: Date.now() },
       { new: true, runValidators: true }
     );
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Planner profile updated successfully",
       data: updated,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Update Planner Error:", error);
+    return res.status(500).json({
       success: false,
       message: "Error updating planner profile",
       error: error.message,
@@ -197,37 +110,153 @@ const updatePlannerProfile = async (req, res) => {
   }
 };
 
-// ===============================
-// ❌ DELETE PLANNER PROFILE (PLANNER OR ADMIN)
-// ===============================
+// ===================================================
+// 👤 GET CURRENT LOGGED-IN PLANNER PROFILE
+// ===================================================
+const getCurrentPlannerProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    let profile = await PlannerProfile.findOne({ userId });
+
+    if (!profile) return createOrGetPlannerProfile(req, res);
+
+    return res.status(200).json({
+      success: true,
+      data: profile,
+    });
+  } catch (err) {
+    console.error("Get Current Planner Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error retrieving planner profile",
+    });
+  }
+};
+
+// ===================================================
+// 📸 UPLOAD PROFILE IMAGE
+// ===================================================
+const uploadPlannerProfileImage = async (req, res) => {
+  try {
+    if (!req.file)
+      return res
+        .status(400)
+        .json({ success: false, message: "No image file uploaded" });
+
+    const filePath = normalizePath(req.file.path);
+    return res.status(200).json({
+      success: true,
+      message: "Profile image uploaded successfully",
+      data: { profileImage: filePath },
+    });
+  } catch (error) {
+    console.error("Upload Planner Image Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error uploading profile image",
+      error: error.message,
+    });
+  }
+};
+
+// ===================================================
+// 🖼 UPLOAD GALLERY IMAGES
+// ===================================================
+const uploadPlannerGallery = async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0)
+      return res
+        .status(400)
+        .json({ success: false, message: "No gallery images uploaded" });
+
+    const galleryPaths = req.files.map((f) => normalizePath(f.path));
+
+    return res.status(200).json({
+      success: true,
+      message: "Gallery images uploaded successfully",
+      data: { gallery: galleryPaths },
+    });
+  } catch (error) {
+    console.error("Upload Gallery Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error uploading gallery images",
+      error: error.message,
+    });
+  }
+};
+
+// ===================================================
+// 🌍 PUBLIC: GET ALL PLANNERS
+// ===================================================
+const getPlannerProfiles = async (req, res) => {
+  try {
+    const planners = await PlannerProfile.find()
+      .populate("userId", "username email")
+      .select("-__v");
+
+    return res.status(200).json({
+      success: true,
+      count: planners.length,
+      data: planners,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch planner profiles",
+      error: error.message,
+    });
+  }
+};
+
+// ===================================================
+// 🌍 PUBLIC: GET SINGLE PLANNER PROFILE BY ID
+// ===================================================
+const getPlannerProfileById = async (req, res) => {
+  try {
+    const planner = await PlannerProfile.findById(req.params.id)
+      .populate("userId", "username email")
+      .populate("reviews.reviewerId", "username");
+
+    if (!planner)
+      return res.status(404).json({
+        success: false,
+        message: "Planner profile not found",
+      });
+
+    return res.status(200).json({ success: true, data: planner });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch planner profile",
+      error: error.message,
+    });
+  }
+};
+
+// ===================================================
+// ❌ DELETE OWN PROFILE
+// ===================================================
 const deletePlannerProfile = async (req, res) => {
   try {
-    const { id } = req.params;
     const userId = req.user?.id;
     if (!userId)
       return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    const profile = await PlannerProfile.findById(id);
+    const profile = await PlannerProfile.findOne({ userId });
     if (!profile)
       return res
         .status(404)
-        .json({ success: false, message: "Planner profile not found" });
+        .json({ success: false, message: "Profile not found" });
 
-    if (profile.userId.toString() !== userId && req.user.role !== "admin") {
-      return res.status(403).json({
-        success: false,
-        message: "Forbidden: You can only delete your own profile",
-      });
-    }
+    await PlannerProfile.findByIdAndDelete(profile._id);
 
-    await PlannerProfile.findByIdAndDelete(id);
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Planner profile deleted successfully",
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Error deleting planner profile",
       error: error.message,
@@ -235,32 +264,31 @@ const deletePlannerProfile = async (req, res) => {
   }
 };
 
-// ===============================
-// 📂 FILTER BY SPECIALIZATION (PUBLIC)
-// ===============================
+// ===================================================
+// 🎯 PUBLIC: FILTER PLANNERS BY SPECIALIZATION
+// ===================================================
 const getPlannersBySpecialization = async (req, res) => {
   try {
     const { specialization } = req.params;
-
-    // Case-insensitive search for the specialization within the array
     const planners = await PlannerProfile.find({
       specialization: { $regex: new RegExp(specialization, "i") },
     })
       .populate("userId", "username email")
       .select("-__v");
 
-    if (!planners.length) {
+    if (!planners.length)
       return res.status(404).json({
         success: false,
-        message: "No planners found with this specialization",
+        message: "No planners found for this specialization",
       });
-    }
 
-    res
-      .status(200)
-      .json({ success: true, count: planners.length, data: planners });
+    return res.status(200).json({
+      success: true,
+      count: planners.length,
+      data: planners,
+    });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to fetch planners by specialization",
       error: error.message,
@@ -269,10 +297,13 @@ const getPlannersBySpecialization = async (req, res) => {
 };
 
 module.exports = {
-  createPlannerProfile,
+  createOrGetPlannerProfile,
+  updatePlannerProfile,
+  getCurrentPlannerProfile,
+  uploadPlannerProfileImage,
+  uploadPlannerGallery,
   getPlannerProfiles,
   getPlannerProfileById,
-  updatePlannerProfile,
   deletePlannerProfile,
   getPlannersBySpecialization,
 };

@@ -1,198 +1,184 @@
-import React, { useEffect, useState } from "react";
+// src/components/VendorLounge.jsx (updated)
+import React, { useState, useEffect, useMemo } from "react";
 import api from "../../utils/axios";
-import { Bell, Calendar, DollarSign, Star, ClipboardList } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
+// Components
 import Sidebar from "./VendorPieces/Sidebar";
 import Topbar from "./VendorPieces/Topbar";
+import VendorDashboard from "./VendorPieces/VendorDashboard";
+import PendingRequests from "./VendorPieces/PendingRequests";
+import Messages from "./VendorPieces/Messages";
+import MyProfile from "./VendorPieces/MyProfile";
 
 export default function VendorLounge() {
+  const [activeSection, setActiveSection] = useState("overview");
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState("grid");
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const navigate = useNavigate();
+
+  // Fetch vendor dashboard data
+  const fetchDashboard = async () => {
+    try {
+      setError(null);
+      setLoading(true);
+      const res = await api.get("/vendor-profile/me"); // Use the specific profile endpoint
+      if (res.data.success) {
+        setDashboard(res.data.data);
+      } else {
+        setError("Failed to load dashboard data");
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || "Error fetching vendor data");
+      // If no vendor profile exists, redirect to profile creation
+      if (err.response?.status === 404) {
+        setActiveSection("profile");
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        const res = await api.get("/vendor-dashboard");
-        if (res.data.success) {
-          setDashboard(res.data.data);
-        }
-      } catch (error) {
-        console.error("Error fetching vendor dashboard:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchDashboard();
   }, []);
 
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchDashboard();
+  };
+
+  const handleLogout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    } finally {
+      navigate("/login");
+    }
+  };
+
+  // Filter events based on search & status
+  const filteredEvents = useMemo(() => {
+    if (!dashboard?.assignedEvents) return [];
+    return dashboard.assignedEvents.filter((event) => {
+      const matchesSearch = event.name
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase());
+      const matchesFilter =
+        activeFilter === "all" || event.status === activeFilter;
+      return matchesSearch && matchesFilter;
+    });
+  }, [dashboard?.assignedEvents, searchTerm, activeFilter]);
+
+  // Compute performance metrics for vendors
+  const performanceMetrics = useMemo(() => {
+    if (!dashboard) return null;
+
+    const vendorStats = dashboard.vendorStats || {};
+    const totalBookings = vendorStats.totalBookings || 0;
+    const completedBookings = vendorStats.completedBookings || 0;
+    const totalReviews = vendorStats.totalReviews || 0;
+    const averageRating = vendorStats.averageRating || 0;
+
+    const completionRate = totalBookings
+      ? (completedBookings / totalBookings) * 100
+      : 0;
+    const responseRate = vendorStats.responseRate || 0;
+
+    return {
+      totalBookings,
+      completedBookings,
+      completionRate: Math.round(completionRate),
+      averageRating: averageRating.toFixed(1),
+      totalReviews,
+      responseRate: Math.round(responseRate),
+    };
+  }, [dashboard]);
+
+  // Render the active view
+  const renderContent = () => {
+    switch (activeSection) {
+      case "overview":
+        return (
+          <VendorDashboard
+            filteredEvents={filteredEvents}
+            performanceMetrics={performanceMetrics}
+            dashboard={dashboard}
+          />
+        );
+      case "pending":
+        return <PendingRequests />;
+      case "messages":
+        return <Messages />;
+      case "profile":
+        return (
+          <MyProfile profileData={dashboard} onProfileUpdate={setDashboard} />
+        );
+      default:
+        return (
+          <VendorDashboard
+            filteredEvents={filteredEvents}
+            performanceMetrics={performanceMetrics}
+            dashboard={dashboard}
+          />
+        );
+    }
+  };
+
   if (loading)
     return (
-      <div className="flex items-center justify-center h-screen text-brand-navy">
-        Loading Vendor Lounge...
+      <div className="flex flex-col items-center justify-center h-screen">
+        <div className="w-12 h-12 border-4 border-brand-navy border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-gray-700">Loading vendor dashboard...</p>
       </div>
     );
 
-  if (!dashboard)
+  if (error && activeSection !== "profile")
     return (
-      <div className="flex items-center justify-center h-screen text-red-500">
-        Could not load dashboard
+      <div className="flex flex-col items-center justify-center h-screen">
+        <p className="text-red-500 mb-4">{error}</p>
+        <button
+          onClick={handleRefresh}
+          className="px-6 py-2 bg-brand-navy text-white rounded-lg hover:bg-brand-dark transition"
+        >
+          Retry
+        </button>
       </div>
     );
 
   return (
-    <div className="flex bg-brand-ivory min-h-screen">
-      {/* Sidebar */}
-      <Sidebar />
-
-      {/* Main Section */}
-      <div className="flex-1">
+    <div className="flex min-h-screen bg-gray-50">
+      <Sidebar
+        activeSection={activeSection}
+        setActiveSection={setActiveSection}
+        handleLogout={handleLogout}
+        isMobileOpen={isMobileOpen}
+        setIsMobileOpen={setIsMobileOpen}
+      />
+      <div className="flex-1 flex flex-col lg:ml-0 min-w-0">
         <Topbar
-          user={dashboard.vendor}
+          dashboard={dashboard}
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
+          handleRefresh={handleRefresh}
+          refreshing={refreshing}
+          showNotifications={showNotifications}
+          setShowNotifications={setShowNotifications}
+          handleLogout={handleLogout}
+          activeSection={activeSection}
+          activeFilter={activeFilter}
+          setActiveFilter={setActiveFilter}
         />
-
-        <div className="p-8">
-          {/* ===================== */}
-          {/* DASHBOARD STATS */}
-          {/* ===================== */}
-          <section className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <StatCard
-              icon={<ClipboardList size={24} />}
-              title="Pending Orders"
-              value={dashboard.pendingOrders}
-              color="bg-yellow-100 text-yellow-700"
-            />
-            <StatCard
-              icon={<Calendar size={24} />}
-              title="Assigned Events"
-              value={dashboard.assignedEvents?.length || 0}
-              color="bg-blue-100 text-blue-700"
-            />
-            <StatCard
-              icon={<DollarSign size={24} />}
-              title="Total Revenue"
-              value={`₦${dashboard.totalRevenue.toLocaleString()}`}
-              color="bg-green-100 text-green-700"
-            />
-            <StatCard
-              icon={<Star size={24} />}
-              title="Average Rating"
-              value={dashboard.averageRating.toFixed(1)}
-              color="bg-purple-100 text-purple-700"
-            />
-          </section>
-
-          {/* ===================== */}
-          {/* ASSIGNED EVENTS */}
-          {/* ===================== */}
-          <section className="mb-8">
-            <h2 className="text-lg font-semibold text-brand-navy mb-3">
-              Assigned Events
-            </h2>
-            {dashboard.assignedEvents?.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {dashboard.assignedEvents.map((event) => (
-                  <div
-                    key={event._id}
-                    className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100"
-                  >
-                    <h3 className="font-semibold text-brand-navy capitalize">
-                      {event.name || "Untitled Event"}
-                    </h3>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {event.date
-                        ? new Date(event.date).toLocaleDateString()
-                        : "No date"}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-sm">No assigned events yet.</p>
-            )}
-          </section>
-
-          {/* ===================== */}
-          {/* NOTIFICATIONS */}
-          {/* ===================== */}
-          <section className="mb-8">
-            <h2 className="text-lg font-semibold text-brand-navy mb-3">
-              Notifications
-            </h2>
-            <div className="space-y-3">
-              {dashboard.notifications.length > 0 ? (
-                dashboard.notifications.slice(0, 5).map((note) => (
-                  <div
-                    key={note._id}
-                    className="bg-white p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4 border-brand-navy"
-                  >
-                    <p className="text-sm text-gray-700">{note.message}</p>
-                    <span className="text-xs text-gray-400">
-                      {new Date(note.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-500 text-sm">
-                  You have no notifications yet.
-                </p>
-              )}
-            </div>
-          </section>
-
-          {/* ===================== */}
-          {/* RATINGS */}
-          {/* ===================== */}
-          <section>
-            <h2 className="text-lg font-semibold text-brand-navy mb-3">
-              Client Ratings
-            </h2>
-            <div className="space-y-3">
-              {dashboard.ratings.length > 0 ? (
-                dashboard.ratings.map((rating) => (
-                  <div
-                    key={rating._id}
-                    className="bg-white p-4 rounded-xl shadow-sm border border-gray-100"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-brand-navy capitalize">
-                        {rating.client?.name || "Anonymous"}
-                      </span>
-                      <span className="text-yellow-500 text-sm">
-                        {"⭐".repeat(rating.score)}
-                      </span>
-                    </div>
-                    <p className="text-gray-600 text-sm">{rating.comment}</p>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-500 text-sm">No ratings yet.</p>
-              )}
-            </div>
-          </section>
-        </div>
+        <main className="flex-1 overflow-auto">{renderContent()}</main>
       </div>
-    </div>
-  );
-}
-
-// ================================
-// 📊 Reusable Stat Card Component
-// ================================
-function StatCard({ icon, title, value, color }) {
-  return (
-    <div
-      className={`flex items-center justify-between p-4 rounded-2xl shadow-sm ${color} bg-opacity-50`}
-    >
-      <div>
-        <p className="text-sm font-medium">{title}</p>
-        <h3 className="text-xl font-semibold">{value}</h3>
-      </div>
-      <div className="p-3 bg-white rounded-full shadow-sm">{icon}</div>
     </div>
   );
 }

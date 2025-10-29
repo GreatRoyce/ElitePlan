@@ -1,73 +1,125 @@
+// Sidebar.jsx
 import React from "react";
-import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
-  CalendarDays,
-  Package,
-  Bell,
-  Settings,
+  Clock,
+  MessageSquare,
+  User,
   LogOut,
+  X,
+  Menu,
 } from "lucide-react";
 
-const menuItems = [
-  { name: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/vendor/dashboard" },
-  { name: "Bookings", icon: <CalendarDays size={20} />, path: "/vendor/bookings" },
-  { name: "Orders", icon: <Package size={20} />, path: "/vendor/orders" },
-  { name: "Notifications", icon: <Bell size={20} />, path: "/vendor/notifications" },
-  { name: "Settings", icon: <Settings size={20} />, path: "/vendor/settings" },
-];
+export default function Sidebar({
+  activeSection,
+  setActiveSection,
+  handleLogout,
+  isMobileOpen,
+  setIsMobileOpen,
+}) {
+  const menuItems = [
+    { id: "overview", label: "Overview", icon: LayoutDashboard },
+    { id: "pending", label: "Pending Requests", icon: Clock },
+    { id: "messages", label: "Messages", icon: MessageSquare },
+    { id: "profile", label: "My Profile", icon: User },
+  ];
 
-const Sidebar = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
+  const handleMenuItemClick = (itemId) => {
+    setActiveSection(itemId);
+    setIsMobileOpen(false);
   };
 
   return (
-    <aside className="bg-brand-navy text-brand-ivory w-64 min-h-screen flex flex-col justify-between shadow-lg">
-      {/* Logo Section */}
-      <div>
-        <div className="text-center py-6 text-2xl font-semibold border-b border-brand-gold tracking-wide">
-          ElitePlan
+    <>
+      {/* Mobile Menu Toggle */}
+      <button
+        onClick={() => setIsMobileOpen(!isMobileOpen)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-brand.ivory rounded-lg shadow-md border border-brand.charcoal hover:shadow-lg transition-all duration-200"
+        aria-label="Toggle menu"
+      >
+        {isMobileOpen ? (
+          <X className="w-5 h-5 text-brand.charcoal" />
+        ) : (
+          <Menu className="w-5 h-5 text-brand.charcoal" />
+        )}
+      </button>
+
+      {/* Mobile Overlay */}
+      {isMobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40 backdrop-blur-sm transition-opacity duration-300"
+          onClick={() => setIsMobileOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar */}
+      <div
+        className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-brand.ivory border-r border-brand.charcoal transform transition-all duration-300 ease-in-out flex flex-col shadow-xl lg:shadow-none
+        ${
+          isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        }`}
+      >
+        {/* Header */}
+        <div className="p-6 border-b border-brand.charcoal">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-brand.navy to-brand.gold rounded-xl flex items-center justify-center shadow-md">
+              <span className="text-brand.ivory font-bold text-lg">V</span>
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-brand.navy">VenueVendor</h1>
+              <p className="text-sm text-brand.charcoal font-medium">
+                Business Portal
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Menu Links */}
-        <nav className="mt-6">
-          {menuItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <button
-                key={item.name}
-                onClick={() => navigate(item.path)}
-                className={`flex items-center gap-3 w-full text-left px-6 py-3 transition-all ${
-                  isActive
-                    ? "bg-brand-gold text-brand-navy font-semibold"
-                    : "hover:bg-brand-charcoal/30"
-                }`}
-              >
-                {item.icon}
-                <span>{item.name}</span>
-              </button>
-            );
-          })}
+        {/* Navigation */}
+        <nav className="flex-1 px-4 py-6">
+          <ul className="space-y-1">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeSection === item.id;
+
+              return (
+                <li key={item.id}>
+                  <button
+                    onClick={() => handleMenuItemClick(item.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 relative group
+                    ${
+                      isActive
+                        ? "bg-gradient-to-r from-brand.navy to-brand.gold text-brand.ivory shadow-lg"
+                        : "text-brand.charcoal hover:bg-brand.ivory/20 hover:text-brand.navy hover:shadow-md"
+                    }`}
+                  >
+                    {isActive && (
+                      <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-brand.ivory rounded-r-full" />
+                    )}
+                    <Icon
+                      className={`w-5 h-5 transition-transform duration-200 ${
+                        isActive ? "scale-110" : "group-hover:scale-105"
+                      }`}
+                    />
+                    <span className="font-medium text-sm">{item.label}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </nav>
-      </div>
 
-      {/* Logout */}
-      <div className="px-6 py-4 border-t border-brand-charcoal/40">
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 text-brand-ivory hover:text-brand-gold transition-all"
-        >
-          <LogOut size={20} />
-          Logout
-        </button>
+        {/* Footer - Logout */}
+        <div className="p-4 border-t border-brand.charcoal bg-brand.ivory/50">
+          <button
+            onClick={() => handleLogout()}
+            className="w-full flex items-center gap-3 px-3 py-3 text-brand.charcoal hover:bg-brand.royal hover:text-brand.ivory rounded-xl transition-all duration-200 group hover:shadow-md"
+          >
+            <LogOut className="w-5 h-5 transition-transform group-hover:scale-105" />
+            <span className="font-medium text-sm">Logout</span>
+          </button>
+        </div>
       </div>
-    </aside>
+    </>
   );
-};
-
-export default Sidebar;
+}

@@ -1,264 +1,180 @@
 const VendorProfile = require("../../models/vendorProfile.model");
 const User = require("../../models/user.model");
 
-// ================== CREATE VENDOR PROFILE ==================
-const createVendorProfile = async (req, res) => {
-  try {
-    const {
-      businessName,
-      contactPerson,
-      alternateContact,
-      category,
-      subcategory,
-      description,
-      yearsExperience,
-      address,
-      city,
-      state,
-      country,
-      operatingHours,
-      priceRange,
-      paymentMethods,
-      socialLinks,
-      website,
-      whatsappLink,
-      details,
-    } = req.body;
+// Helpers
+const toArray = (val) => (Array.isArray(val) ? val : val ? [val] : []);
+const normalizePath = (filePath) => filePath?.replace(/\\/g, "/");
 
-    // ✅ Logged-in user from token
-    const userId = req.user.id;
+// ===================================================
+// CREATE OR GET VENDOR PROFILE
+// ===================================================
+const createOrGetVendorProfile = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
     const user = await User.findById(userId);
-    if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    // ✅ Images
-    const profileImage =
-      req.files?.profileImage?.[0]?.path.replace(/\\/g, "/") || null;
-    const portfolioImages = req.files?.portfolioImages
-      ? req.files.portfolioImages.map((file) => file.path.replace(/\\/g, "/"))
-      : [];
-    const gallery = req.files?.gallery
-      ? req.files.gallery.map((file) => file.path.replace(/\\/g, "/"))
-      : [];
+    let profile = await VendorProfile.findOne({ userId });
 
-    const newVendor = new VendorProfile({
-      userId,
-      businessName,
-      contactPerson,
-      email: user.email,
-      phonePrimary: user.phone,
-      alternateContact,
-      profileImage,
-      portfolioImages,
-      gallery,
-      category,
-      subcategory,
-      description,
-      yearsExperience,
-      address,
-      city,
-      state,
-      country,
-      operatingHours,
-      priceRange,
-      paymentMethods,
-      socialLinks,
-      website,
-      whatsappLink,
-      details,
-    });
+    if (!profile) {
+      profile = new VendorProfile({
+        userId,
+        businessName: "N/A",
+        contactPerson: user.username || "N/A",
+        email: user.email,
+        phonePrimary: user.phone || "N/A",
+        category: "Venue & Accommodation",
+        subcategory: [],
+        description: "",
+        gallery: [],
+        portfolioImages: [],
+        socialLinks: {},
+      });
+      await profile.save();
+    }
 
-    await newVendor.save();
-
-    res.status(201).json({
-      success: true,
-      message: "Vendor profile created successfully",
-      data: newVendor,
-    });
+    res.status(200).json({ success: true, data: profile });
   } catch (error) {
-    console.error("Create Vendor Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to create vendor profile",
-      error: error.message,
-    });
+    console.error("Error creating/getting vendor profile:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ================== GET ALL VENDOR PROFILES ==================
-const getAllVendors = async (req, res) => {
-  try {
-    const vendors = await VendorProfile.find()
-      .populate("userId", "username email")
-      .select("-__v");
-
-    res.status(200).json({
-      success: true,
-      count: vendors.length,
-      data: vendors,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve vendors",
-      error: error.message,
-    });
-  }
-};
-
-// ================== GET SINGLE VENDOR BY ID ==================
-const getVendorById = async (req, res) => {
-  try {
-    const vendor = await VendorProfile.findById(req.params.id)
-      .populate("userId", "username email")
-      .populate("reviews");
-
-    if (!vendor)
-      return res
-        .status(404)
-        .json({ success: false, message: "Vendor not found" });
-
-    res.status(200).json({ success: true, data: vendor });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve vendor",
-      error: error.message,
-    });
-  }
-};
-
-// ================== UPDATE VENDOR PROFILE ==================
+// ===================================================
+// UPDATE VENDOR PROFILE
+// ===================================================
 const updateVendorProfile = async (req, res) => {
   try {
-    const vendorId = req.params.id;
-    const updates = req.body;
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    if (req.files?.profileImage) {
-      updates.profileImage = req.files.profileImage[0].path.replace(/\\/g, "/");
+    let profile = await VendorProfile.findOne({ userId });
+    if (!profile) return res.status(404).json({ success: false, message: "Profile not found" });
+
+    const updates = { ...req.body };
+
+    if (updates.subcategory) updates.subcategory = toArray(updates.subcategory);
+
+    const allowedCategories = [
+      "Venue & Accommodation",
+      "Food & Beverage",
+      "Entertainment & Hosting",
+      "Decor & Ambience",
+      "Guest Experience",
+      "Security & Logistics",
+      "Media & Documentation",
+      "Fashion & Beauty",
+      "Transport & Rentals",
+      "Print & Branding",
+      "Tech & Digital",
+      "Health & Safety",
+      "Traditional Engagement",
+      "Kids Entertainment",
+      "Cleaning Services",
+    ];
+
+    if (updates.category && !allowedCategories.includes(updates.category)) {
+      return res.status(400).json({ success: false, message: "Invalid category" });
     }
-    if (req.files?.portfolioImages) {
-      updates.portfolioImages = req.files.portfolioImages.map((file) =>
-        file.path.replace(/\\/g, "/")
-      );
-    }
-    if (req.files?.gallery) {
-      updates.gallery = req.files.gallery.map((file) =>
-        file.path.replace(/\\/g, "/")
-      );
+
+    // File uploads
+    if (req.files) {
+      if (req.files.gallery) updates.gallery = req.files.gallery.map((f) => normalizePath(f.path));
+      if (req.files.profileImage) updates.profileImage = normalizePath(req.files.profileImage[0].path);
+      if (req.files.portfolioImages) updates.portfolioImages = req.files.portfolioImages.map((f) => normalizePath(f.path));
+      if (req.files.introVideo) updates.introVideo = normalizePath(req.files.introVideo[0].path);
     }
 
-    const updatedVendor = await VendorProfile.findByIdAndUpdate(
-      vendorId,
-      updates,
-      { new: true, runValidators: true }
-    );
+    if (updates.socialLinks) updates.socialLinks = { ...profile.socialLinks, ...updates.socialLinks };
 
-    if (!updatedVendor)
-      return res
-        .status(404)
-        .json({ success: false, message: "Vendor not found" });
+    updates.lastUpdated = Date.now();
 
-    res.status(200).json({
-      success: true,
-      message: "Vendor profile updated successfully",
-      data: updatedVendor,
-    });
+    const updatedProfile = await VendorProfile.findByIdAndUpdate(profile._id, updates, { new: true, runValidators: true });
+
+    res.status(200).json({ success: true, message: "Profile updated", data: updatedProfile });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Failed to update vendor profile",
-      error: error.message,
-    });
+    console.error("Update error:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ================== DELETE VENDOR PROFILE ==================
+// ===================================================
+// GET CURRENT VENDOR PROFILE
+// ===================================================
+const getCurrentVendorProfile = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    let profile = await VendorProfile.findOne({ userId });
+    if (!profile) return createOrGetVendorProfile(req, res);
+
+    res.status(200).json({ success: true, data: profile });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ===================================================
+// DELETE VENDOR PROFILE
+// ===================================================
 const deleteVendorProfile = async (req, res) => {
   try {
-    const vendor = await VendorProfile.findByIdAndDelete(req.params.id);
-    if (!vendor)
-      return res
-        .status(404)
-        .json({ success: false, message: "Vendor not found" });
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    res.status(200).json({
-      success: true,
-      message: "Vendor deleted successfully",
-    });
+    const profile = await VendorProfile.findOne({ userId });
+    if (!profile) return res.status(404).json({ success: false, message: "Vendor profile not found" });
+
+    await VendorProfile.findByIdAndDelete(profile._id);
+
+    res.status(200).json({ success: true, message: "Vendor profile deleted" });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete vendor",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ================== FILTER BY CATEGORY ==================
+// ===================================================
+// PUBLIC VENDOR ROUTES
+// ===================================================
+const getVendorProfiles = async (req, res) => {
+  try {
+    const vendors = await VendorProfile.find().populate("userId", "username email").select("-__v");
+    res.status(200).json({ success: true, count: vendors.length, data: vendors });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getVendorProfileById = async (req, res) => {
+  try {
+    const vendor = await VendorProfile.findById(req.params.id).populate("userId", "username email");
+    if (!vendor) return res.status(404).json({ success: false, message: "Vendor not found" });
+    res.status(200).json({ success: true, data: vendor });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 const getVendorsByCategory = async (req, res) => {
   try {
     const { category } = req.params;
-    const vendors = await VendorProfile.find({ category }).populate(
-      "userId",
-      "username email"
-    );
-
-    if (!vendors.length)
-      return res.status(404).json({
-        success: false,
-        message: "No vendors found in this category",
-      });
-
+    const vendors = await VendorProfile.find({ category }).populate("userId", "username email");
+    if (!vendors.length) return res.status(404).json({ success: false, message: "No vendors found" });
     res.status(200).json({ success: true, data: vendors });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch category vendors",
-      error: error.message,
-    });
-  }
-};
-
-// ================== VERIFY OR FEATURE A VENDOR ==================
-const verifyVendor = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { verified, featured, approvedBy } = req.body;
-
-    const vendor = await VendorProfile.findByIdAndUpdate(
-      id,
-      { verified, featured, approvedBy, dateApproved: Date.now() },
-      { new: true }
-    );
-
-    if (!vendor)
-      return res
-        .status(404)
-        .json({ success: false, message: "Vendor not found" });
-
-    res.status(200).json({
-      success: true,
-      message: "Vendor status updated successfully",
-      data: vendor,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Failed to update vendor status",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 module.exports = {
-  createVendorProfile,
-  getAllVendors,
-  getVendorById,
+  createOrGetVendorProfile,
   updateVendorProfile,
+  getCurrentVendorProfile,
   deleteVendorProfile,
+  getVendorProfiles,
+  getVendorProfileById,
   getVendorsByCategory,
-  verifyVendor,
 };

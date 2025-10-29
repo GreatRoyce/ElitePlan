@@ -1,4 +1,4 @@
-// src/components/PlannerPieces/Profile.jsx
+// src/components/VendorPieces/VendorProfile.jsx
 import React, { useEffect, useState, useRef } from "react";
 import {
   Users,
@@ -15,9 +15,10 @@ import {
   MapPin,
   Award,
   Globe,
-  Mic,
+  Phone,
+  Mail,
+  Building,
 } from "lucide-react";
-import { FaLocationDot } from "react-icons/fa6";
 import api from "../../../utils/axios";
 
 // ✅ Helper to construct full image URL
@@ -27,7 +28,7 @@ const getImageUrl = (path) => {
   return `${api.defaults.baseURL.replace("/api/v1", "")}/${path}`;
 };
 
-export default function Profile() {
+export default function VendorProfile({ initialProfileData, onProfileUpdate }) {
   const [formData, setFormData] = useState(null);
   const [draftData, setDraftData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -49,59 +50,12 @@ export default function Profile() {
     },
     { id: "services", label: "Services", icon: <Award size={16} /> },
     { id: "gallery", label: "Gallery", icon: <ImageIcon size={16} /> },
-    { id: "location", label: "Location", icon: <FaLocationDot size={16} /> },
+    { id: "location", label: "Location", icon: <MapPin size={16} /> },
     { id: "social", label: "Social", icon: <LinkIcon size={16} /> },
   ];
 
-  // ✅ Specialization options from schema
-  const specializationOptions = [
-    "Wedding Planning",
-    "Corporate Events",
-    "Social Gatherings",
-    "Luxury Events",
-    "Destination Planning",
-    "Cultural Ceremonies",
-    "Non-Profit Events",
-    "Other",
-  ];
-
-  // ✅ Planner type options from schema
-  const plannerTypeOptions = [
-    { value: "corporate", label: "Corporate" },
-    { value: "wedding", label: "Wedding" },
-    { value: "social", label: "Social" },
-    { value: "non-profit", label: "Non-Profit" },
-    { value: "other", label: "Other" },
-  ];
-
-  // ✅ Event types from schema
-  const eventTypeOptions = [
-    "Conferences",
-    "Concerts",
-    "Product Launches",
-    "Weddings",
-    "Festivals",
-    "Workshops",
-    "Private Parties",
-    "Award Ceremonies",
-    "Other",
-  ];
-
-  // ✅ Language options from schema
-  const languageOptions = [
-    "English",
-    "French",
-    "Spanish",
-    "Arabic",
-    "Yoruba",
-    "Igbo",
-    "Hausa",
-    "Swahili",
-    "Other",
-  ];
-
-  // ✅ Vendor category options from schema
-  const vendorCategoryOptions = [
+  // ✅ Vendor categories
+  const vendorCategories = [
     "Catering",
     "Photography",
     "Decoration",
@@ -115,55 +69,75 @@ export default function Profile() {
     "Other",
   ];
 
-  // ✅ Fetch planner profile
+  // ✅ Service regions in Nigeria
+  const nigerianStates = [
+    "Lagos",
+    "Abuja",
+    "Rivers",
+    "Delta",
+    "Oyo",
+    "Kano",
+    "Kaduna",
+    "Edo",
+    "Plateau",
+    "Ogun",
+    "Ondo",
+    "Enugu",
+    "Anambra",
+    "Imo",
+    "Abia",
+    "Cross River",
+    "Akwa Ibom",
+    "Bayelsa",
+    "Niger",
+    "Benue",
+    "Bornu",
+    "Adamawa",
+    "Taraba",
+    "Kwara",
+    "Kogi",
+    "Ekiti",
+    "Osun",
+    "Gombe",
+    "Sokoto",
+    "Kebbi",
+    "Zamfara",
+    "Katsina",
+    "Jigawa",
+    "Yobe",
+    "Bauchi",
+    "Nasarawa",
+    "Ebonyi",
+    "Bayelsa",
+  ];
+
+  // ✅ Fetch vendor profile
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const res = await api.get("/planner-profile/me");
-        if (res.data.data) {
-          setFormData(res.data.data);
-          setDraftData(res.data.data);
-        } else {
-          // Initialize with schema-compliant empty state
-          setDraftData({
-            fullName: "",
-            email: "",
-            phonePrimary: "",
-            companyName: "",
-            profileImage: null,
-            gallery: [],
-            specialization: [],
-            yearsExperience: "",
-            shortBio: "",
-            plannerType: "",
-            country: "Nigeria",
-            state: "",
-            serviceRegions: [],
-            eventTypesHandled: [],
-            languagesSpoken: [],
-            preferredVendorCategories: [],
-            certifications: [],
-            socialLinks: {
-              facebook: "",
-              instagram: "",
-              tiktok: "",
-              linkedin: "",
-              twitter: "",
-            },
-            ongoingProjects: 0,
-          });
-          setIsEditing(true);
-        }
-      } catch (err) {
-        setErrors({
-          fetch: err.response?.data?.message || "Failed to fetch profile",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProfile();
-  }, []);
+    if (initialProfileData) {
+      setFormData(initialProfileData);
+      setDraftData(initialProfileData);
+    } else {
+      // Initialize empty profile if no initial data is provided
+      setDraftData({
+        businessName: "",
+        contactEmail: "",
+        phoneNumber: "",
+        businessAddress: "",
+        profileImage: null,
+        gallery: [],
+        vendorCategory: "",
+        yearsInBusiness: "",
+        description: "",
+        serviceAreas: [],
+        pricingTier: "",
+        socialLinks: { facebook: "", instagram: "", twitter: "", website: "" },
+        certifications: [],
+        isVerified: false,
+      });
+      setIsEditing(true); // Start in edit mode for new profiles
+    }
+    setLoading(false);
+  }, [initialProfileData]);
 
   const handleToggleEdit = () => {
     setDraftData(formData || draftData);
@@ -188,7 +162,7 @@ export default function Profile() {
     });
   };
 
-  // ✅ Handle array field changes (specialization, eventTypesHandled, etc.)
+  // ✅ Handle array fields
   const handleArrayFieldChange = (fieldName, value) => {
     setDraftData((prev) => ({
       ...prev,
@@ -199,14 +173,14 @@ export default function Profile() {
     }));
   };
 
-  // ✅ Handle multi-select changes
-  const handleMultiSelectChange = (fieldName, option, isChecked) => {
+  // ✅ Handle multi-select for service areas
+  const handleServiceAreaChange = (area, isChecked) => {
     setDraftData((prev) => {
-      const currentArray = prev[fieldName] || [];
-      const updatedArray = isChecked
-        ? [...currentArray, option]
-        : currentArray.filter((item) => item !== option);
-      return { ...prev, [fieldName]: updatedArray };
+      const currentAreas = prev.serviceAreas || [];
+      const updatedAreas = isChecked
+        ? [...currentAreas, area]
+        : currentAreas.filter((a) => a !== area);
+      return { ...prev, serviceAreas: updatedAreas };
     });
   };
 
@@ -227,7 +201,7 @@ export default function Profile() {
     try {
       const formData = new FormData();
       formData.append("profileImage", file);
-      const res = await api.post("/upload/profile-image", formData, {
+      const res = await api.post("/upload-vendor/profile-image", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setDraftData((prev) => ({
@@ -258,7 +232,7 @@ export default function Profile() {
     try {
       const formData = new FormData();
       validImages.forEach((file) => formData.append("gallery", file));
-      const res = await api.post("/upload/gallery", formData, {
+      const res = await api.post("/upload-vendor/gallery", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       const newImages = res.data.data.gallery;
@@ -288,10 +262,11 @@ export default function Profile() {
   // ✅ Save Profile
   const handleSave = async () => {
     try {
-      const res = await api.put("/planner-profile/update/me", draftData);
+      const res = await api.put("/vendor-profile/update/me", draftData);
       setFormData(res.data.data);
       setDraftData(res.data.data);
       setIsEditing(false);
+      onProfileUpdate(res.data.data); // Update parent state
       setSuccessMessage("✅ Profile saved successfully!");
     } catch (err) {
       setErrors({
@@ -300,11 +275,31 @@ export default function Profile() {
     }
   };
 
+  // ✅ Delete Profile
+  const handleDeleteProfile = async () => {
+    if (
+      window.confirm(
+        "Are you sure you want to delete your profile? This action cannot be undone."
+      )
+    ) {
+      try {
+        await api.delete("/vendor-profile/delete/me");
+        setSuccessMessage("✅ Profile deleted successfully!");
+        // Redirect to home or login
+        setTimeout(() => (window.location.href = "/"), 2000);
+      } catch (err) {
+        setErrors({
+          submit: err.response?.data?.message || "Failed to delete profile",
+        });
+      }
+    }
+  };
+
   const hasUnsavedChanges =
     isEditing && JSON.stringify(draftData) !== JSON.stringify(formData);
 
   if (loading)
-    return <p className="text-charcoal">Loading planner profile...</p>;
+    return <p className="text-charcoal">Loading vendor profile...</p>;
   if (errors.fetch) return <p className="text-royal">Error: {errors.fetch}</p>;
   if (!draftData) return <p className="text-charcoal">Loading draft...</p>;
 
@@ -318,11 +313,11 @@ export default function Profile() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-ivory rounded-xl shadow-lg border border-gold">
+    <div className="max-w-6xl mx-auto p-6 bg-ivory rounded-xl shadow-lg border border-gold">
       {/* Header */}
       <div className="flex justify-between items-center mb-6 pb-4 border-b border-navy/20">
         <div>
-          <h2 className="text-2xl font-bold text-navy">Planner Profile</h2>
+          <h2 className="text-2xl font-bold text-navy">Vendor Profile</h2>
           <div
             className={`flex items-center gap-2 mt-1 text-sm font-medium ${
               isEditing ? "text-emerald" : "text-gold"
@@ -337,6 +332,16 @@ export default function Profile() {
         </div>
 
         <div className="flex items-center gap-3">
+          {isEditing && (
+            <button
+              onClick={handleDeleteProfile}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-ivory bg-royal rounded-lg hover:bg-royal/80 transition-colors"
+            >
+              <Trash2 size={16} />
+              Delete Profile
+            </button>
+          )}
+
           {isEditing && formData && (
             <button
               onClick={handleToggleEdit}
@@ -346,6 +351,7 @@ export default function Profile() {
               Cancel
             </button>
           )}
+
           <button
             onClick={isEditing ? handleSave : handleToggleEdit}
             disabled={isEditing && !hasUnsavedChanges}
@@ -358,12 +364,12 @@ export default function Profile() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 border-b border-navy/20">
+      <div className="flex gap-1 mb-6 border-b border-navy/20 overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap ${
               activeTab === tab.id
                 ? "bg-navy text-gold"
                 : "text-charcoal hover:bg-navy/10"
@@ -382,7 +388,7 @@ export default function Profile() {
             {/* Profile Image Upload */}
             <div className="md:col-span-2">
               <label className="font-medium text-navy mb-2 block">
-                Profile Image
+                Business Logo/Image
               </label>
               <div className="flex items-center gap-4">
                 <div className="w-24 h-24 rounded-full border-2 border-gold bg-gray-100 flex items-center justify-center overflow-hidden">
@@ -413,7 +419,7 @@ export default function Profile() {
                       className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-navy bg-gold rounded-lg hover:bg-gold/80 disabled:bg-charcoal/30 disabled:cursor-not-allowed transition-colors"
                     >
                       <Upload size={16} />
-                      {uploading ? "Uploading..." : "Upload Profile Image"}
+                      {uploading ? "Uploading..." : "Upload Business Image"}
                     </button>
                     <p className="text-sm text-charcoal mt-1">
                       JPG, PNG, max 5MB
@@ -427,11 +433,11 @@ export default function Profile() {
             </div>
 
             <div>
-              <label className="font-medium text-navy">Full Name *</label>
+              <label className="font-medium text-navy">Business Name *</label>
               <input
                 type="text"
-                name="fullName"
-                value={activeData.fullName || ""}
+                name="businessName"
+                value={activeData.businessName || ""}
                 readOnly={!isEditing}
                 onChange={handleInputChange}
                 className={getInputClasses(isEditing)}
@@ -440,38 +446,40 @@ export default function Profile() {
             </div>
 
             <div>
-              <label className="font-medium text-navy">Email *</label>
+              <label className="font-medium text-navy">Contact Email *</label>
               <input
                 type="email"
-                name="email"
-                value={activeData.email || ""}
-                readOnly
-                className={getInputClasses(false)}
-              />
-            </div>
-
-            <div>
-              <label className="font-medium text-navy">Phone</label>
-              <input
-                type="text"
-                name="phonePrimary"
-                value={activeData.phonePrimary || ""}
-                readOnly={!isEditing}
-                onChange={handleInputChange}
-                className={getInputClasses(isEditing)}
-              />
-            </div>
-
-            <div>
-              <label className="font-medium text-navy">Company Name *</label>
-              <input
-                type="text"
-                name="companyName"
-                value={activeData.companyName || ""}
+                name="contactEmail"
+                value={activeData.contactEmail || ""}
                 readOnly={!isEditing}
                 onChange={handleInputChange}
                 className={getInputClasses(isEditing)}
                 required
+              />
+            </div>
+
+            <div>
+              <label className="font-medium text-navy">Phone Number *</label>
+              <input
+                type="text"
+                name="phoneNumber"
+                value={activeData.phoneNumber || ""}
+                readOnly={!isEditing}
+                onChange={handleInputChange}
+                className={getInputClasses(isEditing)}
+                required
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="font-medium text-navy">Business Address</label>
+              <textarea
+                name="businessAddress"
+                value={activeData.businessAddress || ""}
+                readOnly={!isEditing}
+                onChange={handleInputChange}
+                className={getInputClasses(isEditing)}
+                rows={3}
               />
             </div>
           </div>
@@ -483,12 +491,33 @@ export default function Profile() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="font-medium text-navy">
-                  Years of Experience
+                  Vendor Category *
+                </label>
+                <select
+                  name="vendorCategory"
+                  value={activeData.vendorCategory || ""}
+                  readOnly={!isEditing}
+                  onChange={handleInputChange}
+                  className={getInputClasses(isEditing)}
+                  required
+                >
+                  <option value="">Select category</option>
+                  {vendorCategories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="font-medium text-navy">
+                  Years in Business
                 </label>
                 <input
                   type="number"
-                  name="yearsExperience"
-                  value={activeData.yearsExperience || ""}
+                  name="yearsInBusiness"
+                  value={activeData.yearsInBusiness || ""}
                   readOnly={!isEditing}
                   onChange={handleInputChange}
                   min="0"
@@ -497,38 +526,20 @@ export default function Profile() {
               </div>
 
               <div>
-                <label className="font-medium text-navy">Planner Type</label>
+                <label className="font-medium text-navy">Pricing Tier</label>
                 <select
-                  name="plannerType"
-                  value={activeData.plannerType || ""}
+                  name="pricingTier"
+                  value={activeData.pricingTier || ""}
                   readOnly={!isEditing}
                   onChange={handleInputChange}
                   className={getInputClasses(isEditing)}
                 >
-                  <option value="">Select type</option>
-                  {plannerTypeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
+                  <option value="">Select tier</option>
+                  <option value="budget">Budget</option>
+                  <option value="standard">Standard</option>
+                  <option value="premium">Premium</option>
+                  <option value="luxury">Luxury</option>
                 </select>
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="font-medium text-navy">Short Bio</label>
-                <textarea
-                  name="shortBio"
-                  value={activeData.shortBio || ""}
-                  readOnly={!isEditing}
-                  onChange={handleInputChange}
-                  className={getInputClasses(isEditing)}
-                  rows={4}
-                  maxLength={250}
-                  placeholder="Brief description of your expertise (max 250 characters)"
-                />
-                <p className="text-sm text-charcoal mt-1">
-                  {activeData.shortBio?.length || 0}/250 characters
-                </p>
               </div>
 
               <div className="md:col-span-2">
@@ -544,45 +555,20 @@ export default function Profile() {
                   placeholder="Enter certifications separated by commas"
                 />
               </div>
-            </div>
 
-            {/* Specialization */}
-            <div>
-              <label className="font-medium text-navy mb-3 block">
-                Specialization
-              </label>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {specializationOptions.map((specialization) => {
-                  const isChecked =
-                    activeData.specialization?.includes(specialization);
-                  return (
-                    <label
-                      key={specialization}
-                      className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${
-                        isChecked
-                          ? "bg-emerald/10 border-emerald"
-                          : "bg-gray-50 border-gray-200"
-                      } ${!isEditing && "cursor-default"}`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={(e) =>
-                          handleMultiSelectChange(
-                            "specialization",
-                            specialization,
-                            e.target.checked
-                          )
-                        }
-                        disabled={!isEditing}
-                        className="mr-2"
-                      />
-                      <span className="text-sm text-charcoal">
-                        {specialization}
-                      </span>
-                    </label>
-                  );
-                })}
+              <div className="md:col-span-2">
+                <label className="font-medium text-navy">
+                  Business Description
+                </label>
+                <textarea
+                  name="description"
+                  value={activeData.description || ""}
+                  readOnly={!isEditing}
+                  onChange={handleInputChange}
+                  className={getInputClasses(isEditing)}
+                  rows={4}
+                  placeholder="Describe your business, services, and what makes you unique..."
+                />
               </div>
             </div>
           </div>
@@ -591,18 +577,16 @@ export default function Profile() {
         {/* Services */}
         {activeTab === "services" && (
           <div className="space-y-6">
-            {/* Event Types Handled */}
             <div>
               <label className="font-medium text-navy mb-3 block">
-                Event Types Handled
+                Service Areas
               </label>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {eventTypeOptions.map((eventType) => {
-                  const isChecked =
-                    activeData.eventTypesHandled?.includes(eventType);
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-60 overflow-y-auto p-2">
+                {nigerianStates.map((state) => {
+                  const isChecked = activeData.serviceAreas?.includes(state);
                   return (
                     <label
-                      key={eventType}
+                      key={state}
                       className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${
                         isChecked
                           ? "bg-emerald/10 border-emerald"
@@ -613,92 +597,12 @@ export default function Profile() {
                         type="checkbox"
                         checked={isChecked}
                         onChange={(e) =>
-                          handleMultiSelectChange(
-                            "eventTypesHandled",
-                            eventType,
-                            e.target.checked
-                          )
+                          handleServiceAreaChange(state, e.target.checked)
                         }
                         disabled={!isEditing}
                         className="mr-2"
                       />
-                      <span className="text-sm text-charcoal">{eventType}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Languages Spoken */}
-            <div>
-              <label className="font-medium text-navy mb-3 block">
-                Languages Spoken
-              </label>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {languageOptions.map((language) => {
-                  const isChecked =
-                    activeData.languagesSpoken?.includes(language);
-                  return (
-                    <label
-                      key={language}
-                      className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${
-                        isChecked
-                          ? "bg-emerald/10 border-emerald"
-                          : "bg-gray-50 border-gray-200"
-                      } ${!isEditing && "cursor-default"}`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={(e) =>
-                          handleMultiSelectChange(
-                            "languagesSpoken",
-                            language,
-                            e.target.checked
-                          )
-                        }
-                        disabled={!isEditing}
-                        className="mr-2"
-                      />
-                      <span className="text-sm text-charcoal">{language}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Preferred Vendor Categories */}
-            <div>
-              <label className="font-medium text-navy mb-3 block">
-                Preferred Vendor Categories
-              </label>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {vendorCategoryOptions.map((category) => {
-                  const isChecked =
-                    activeData.preferredVendorCategories?.includes(category);
-                  return (
-                    <label
-                      key={category}
-                      className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${
-                        isChecked
-                          ? "bg-emerald/10 border-emerald"
-                          : "bg-gray-50 border-gray-200"
-                      } ${!isEditing && "cursor-default"}`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={(e) =>
-                          handleMultiSelectChange(
-                            "preferredVendorCategories",
-                            category,
-                            e.target.checked
-                          )
-                        }
-                        disabled={!isEditing}
-                        className="mr-2"
-                      />
-                      <span className="text-sm text-charcoal">{category}</span>
+                      <span className="text-sm text-charcoal">{state}</span>
                     </label>
                   );
                 })}
@@ -739,7 +643,7 @@ export default function Profile() {
 
             <div>
               <h3 className="font-medium text-navy mb-4">
-                Gallery Images ({activeData.gallery?.length || 0})
+                Portfolio Images ({activeData.gallery?.length || 0})
               </h3>
               {!activeData.gallery?.length ? (
                 <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
@@ -747,7 +651,7 @@ export default function Profile() {
                     size={48}
                     className="mx-auto text-charcoal/30 mb-3"
                   />
-                  <p className="text-charcoal">No gallery images yet</p>
+                  <p className="text-charcoal">No portfolio images yet</p>
                   {!isEditing && (
                     <p className="text-sm text-charcoal/60 mt-1">
                       Switch to edit mode to upload images
@@ -764,7 +668,7 @@ export default function Profile() {
                       <div className="aspect-square bg-gray-100 relative group">
                         <img
                           src={getImageUrl(image)}
-                          alt={`Gallery ${index + 1}`}
+                          alt={`Portfolio ${index + 1}`}
                           className="w-full h-full object-cover"
                         />
                         {isEditing && (
@@ -789,42 +693,46 @@ export default function Profile() {
         {/* Location */}
         {activeTab === "location" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="font-medium text-navy">Country</label>
-              <input
-                type="text"
-                name="country"
-                value={activeData.country || "Nigeria"}
-                readOnly={!isEditing}
-                onChange={handleInputChange}
-                className={getInputClasses(isEditing)}
-              />
-            </div>
-
-            <div>
-              <label className="font-medium text-navy">State</label>
-              <input
-                type="text"
+            <div className="md:col-span-2">
+              <label className="font-medium text-navy">
+                Primary Service State
+              </label>
+              <select
                 name="state"
                 value={activeData.state || ""}
                 readOnly={!isEditing}
                 onChange={handleInputChange}
                 className={getInputClasses(isEditing)}
-              />
+              >
+                <option value="">Select state</option>
+                {nigerianStates.map((state) => (
+                  <option key={state} value={state}>
+                    {state}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="md:col-span-2">
-              <label className="font-medium text-navy">Service Regions</label>
-              <input
-                type="text"
-                value={activeData.serviceRegions?.join(", ") || ""}
-                readOnly={!isEditing}
-                onChange={(e) =>
-                  handleArrayFieldChange("serviceRegions", e.target.value)
-                }
-                className={getInputClasses(isEditing)}
-                placeholder="Enter regions separated by commas"
-              />
+              <h4 className="font-medium text-navy mb-3">Service Coverage</h4>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-charcoal mb-2">
+                  Selected service areas: {activeData.serviceAreas?.length || 0}{" "}
+                  states
+                </p>
+                {activeData.serviceAreas?.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {activeData.serviceAreas.map((area) => (
+                      <span
+                        key={area}
+                        className="px-3 py-1 bg-emerald/20 text-emerald rounded-full text-sm"
+                      >
+                        {area}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -833,75 +741,54 @@ export default function Profile() {
         {activeTab === "social" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
+              <label className="font-medium text-navy">Website</label>
+              <input
+                type="url"
+                name="socialLinks.website"
+                value={activeData.socialLinks?.website || ""}
+                readOnly={!isEditing}
+                onChange={handleInputChange}
+                className={getInputClasses(isEditing)}
+                placeholder="https://example.com"
+              />
+            </div>
+
+            <div>
               <label className="font-medium text-navy">Facebook</label>
               <input
-                type="text"
+                type="url"
                 name="socialLinks.facebook"
                 value={activeData.socialLinks?.facebook || ""}
                 readOnly={!isEditing}
                 onChange={handleInputChange}
                 className={getInputClasses(isEditing)}
+                placeholder="https://facebook.com/yourpage"
               />
             </div>
 
             <div>
               <label className="font-medium text-navy">Instagram</label>
               <input
-                type="text"
+                type="url"
                 name="socialLinks.instagram"
                 value={activeData.socialLinks?.instagram || ""}
                 readOnly={!isEditing}
                 onChange={handleInputChange}
                 className={getInputClasses(isEditing)}
-              />
-            </div>
-
-            <div>
-              <label className="font-medium text-navy">TikTok</label>
-              <input
-                type="text"
-                name="socialLinks.tiktok"
-                value={activeData.socialLinks?.tiktok || ""}
-                readOnly={!isEditing}
-                onChange={handleInputChange}
-                className={getInputClasses(isEditing)}
-              />
-            </div>
-
-            <div>
-              <label className="font-medium text-navy">LinkedIn</label>
-              <input
-                type="text"
-                name="socialLinks.linkedin"
-                value={activeData.socialLinks?.linkedin || ""}
-                readOnly={!isEditing}
-                onChange={handleInputChange}
-                className={getInputClasses(isEditing)}
+                placeholder="https://instagram.com/yourprofile"
               />
             </div>
 
             <div>
               <label className="font-medium text-navy">Twitter</label>
               <input
-                type="text"
+                type="url"
                 name="socialLinks.twitter"
                 value={activeData.socialLinks?.twitter || ""}
                 readOnly={!isEditing}
                 onChange={handleInputChange}
                 className={getInputClasses(isEditing)}
-              />
-            </div>
-
-            <div>
-              <label className="font-medium text-navy">Ongoing Projects</label>
-              <input
-                type="number"
-                name="ongoingProjects"
-                value={activeData.ongoingProjects || 0}
-                readOnly={!isEditing}
-                onChange={handleInputChange}
-                min="0"
-                className={getInputClasses(isEditing)}
+                placeholder="https://twitter.com/yourprofile"
               />
             </div>
           </div>

@@ -11,21 +11,6 @@ dotenv.config();
 
 const app = express();
 
-// Routers
-const clientRouter = require("./src/routes/client.routes");
-const plannerRouter = require("./src/routes/dashboard/plannerdashboard.routes");
-const vendorRouter = require("./src/routes/vendor.routes");
-const authRoutes = require("./src/routes/auth.routes");
-const clientProfileRoutes = require("./src/routes/usersRoutesController/clientProfile.routes");
-const plannerProfileRoutes = require("./src/routes/usersRoutesController/plannerProfile.routes");
-const vendorProfileRoutes = require("./src/routes/usersRoutesController/vendorProfile.routes");
-const vendorDashboardRoutes = require("./src/routes/dashboard/vendordashboard.routes");
-const clientDashboardRoutes = require("./src/routes/dashboard/clientdashboard.routes");
-const bookmarkRoutes = require("./src/routes/bookmark.routes");
-const initialConsultationRoutes = require("./src/routes/initialConsultation.routes");
-const notificationRouter = require("./src/routes/notification.routes");
-
-
 // =======================
 // ⚙️ Database Connection
 // =======================
@@ -37,14 +22,18 @@ connectDB();
 if (process.env.MODE === "react") {
   app.use(
     cors({
-      origin: process.env.CLIENT_URL,
+      origin: process.env.CLIENT_URL || "http://localhost:5173",
       methods: ["GET", "POST", "PUT", "DELETE"],
       credentials: true,
     })
   );
   console.log("🔒 React mode: CORS limited to", process.env.CLIENT_URL);
 } else {
-  app.use(cors());
+  app.use(
+    cors({
+      origin: "*", // Postman + Dev Testing
+    })
+  );
   console.log("🧪 Postman mode: CORS open to all origins");
 }
 
@@ -58,11 +47,25 @@ app.use(express.urlencoded({ extended: true }));
 // =======================
 // 🖼️ Static Files
 // =======================
-app.use("/uploads", express.static("uploads"));
+const __dirnameResolved = path.resolve();
+app.use(
+  "/uploads",
+  express.static(path.join(__dirnameResolved, "uploads"), {
+    setHeaders: (res) => {
+      res.setHeader(
+        "Access-Control-Allow-Origin",
+        process.env.CLIENT_URL || "*"
+      );
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    },
+  })
+);
 
 // =======================
 // 📍 Routes
 // =======================
+
+// Root
 app.get("/", (req, res) => {
   res.status(200).json({
     success: true,
@@ -70,7 +73,29 @@ app.get("/", (req, res) => {
   });
 });
 
-// Core platform routes
+// Core platform
+const clientRouter = require("./src/routes/client.routes");
+const plannerRouter = require("./src/routes/dashboard/plannerdashboard.routes");
+const vendorRouter = require("./src/routes/vendor.routes");
+const vendorDashboardRoutes = require("./src/routes/dashboard/vendordashboard.routes");
+const clientDashboardRoutes = require("./src/routes/dashboard/clientdashboard.routes");
+const notificationRouter = require("./src/routes/notification.routes");
+const uploadPlannerRoutes = require("./src/routes/usersRoutesController/uploadPlanner.routes");
+const uploadVendorRoutes = require("./src/routes/usersRoutesController/uploadVendor.routes");
+
+// Auth
+const authRoutes = require("./src/routes/auth.routes");
+
+// Profiles
+const clientProfileRoutes = require("./src/routes/usersRoutesController/clientProfile.routes");
+const plannerProfileRoutes = require("./src/routes/usersRoutesController/plannerProfile.routes");
+const vendorProfileRoutes = require("./src/routes/usersRoutesController/vendorProfile.routes");
+
+// Other routes
+const initialConsultationRoutes = require("./src/routes/initialConsultation.routes");
+const bookmarkRoutes = require("./src/routes/bookmark.routes");
+
+// Mount routes
 app.use("/api/v1", clientRouter);
 app.use("/api/v1/planner-dashboard", plannerRouter);
 app.use("/api/v1", vendorRouter);
@@ -78,7 +103,9 @@ app.use("/api/v1/vendor-dashboard", vendorDashboardRoutes);
 app.use("/api/v1/client-dashboard", clientDashboardRoutes);
 app.use("/api/v1/notifications", notificationRouter);
 
-
+// Uploads
+app.use("/api/v1/upload", uploadPlannerRoutes);
+app.use("/api/v1/upload-vendor", uploadVendorRoutes);
 
 // Auth
 app.use("/api/v1/auth", authRoutes);
@@ -88,7 +115,7 @@ app.use("/api/v1/client-profile", clientProfileRoutes);
 app.use("/api/v1/planner-profile", plannerProfileRoutes);
 app.use("/api/v1/vendor-profile", vendorProfileRoutes);
 
-// Other routes
+// Other
 app.use("/api/v1/consultation", initialConsultationRoutes);
 app.use("/api/v1/bookmarks", bookmarkRoutes);
 
