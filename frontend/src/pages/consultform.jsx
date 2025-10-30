@@ -186,6 +186,10 @@ function Consultform() {
       }
 
       const payload = {
+        // TODO: Replace these with the actual target user ID and type from your app's state or props.
+        targetUser: "60d21b4667d0d8992e610c85", // Example Planner/Vendor User ID
+        targetType: "Planner", // "Planner" or "Vendor"
+
         username: user.username,
         phone: user.phone,
         email: user.email,
@@ -209,7 +213,7 @@ function Consultform() {
         contactMethod: formData.contactMethod,
       };
 
-      const res = await api.post("/initial-consultation", payload);
+      const res = await api.post("/consultation", payload);
       setMessage(res.data.message || "Consultation submitted successfully!");
       setFormData({
         fullName: "",

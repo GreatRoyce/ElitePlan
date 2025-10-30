@@ -10,7 +10,7 @@ const VendorProfileSchema = new mongoose.Schema({
   phoneSecondary: { type: String, trim: true },
   alternateContact: { type: String, trim: true },
   password: { type: String, select: false },
-
+  tagline: { type: String, maxlength: 120 },
   profileImage: { type: String },
   portfolioImages: [{ type: String }],
   introVideo: { type: String },
@@ -39,7 +39,7 @@ const VendorProfileSchema = new mongoose.Schema({
     required: true,
   },
   subcategory: [{ type: String }], // always an array
-  description: { type: String, maxlength: 1000 },
+  description: { type: String, maxlength: 350 },
   yearsExperience: { type: Number, min: 0 },
   address: { type: String },
   city: { type: String },

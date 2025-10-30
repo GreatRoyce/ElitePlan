@@ -22,6 +22,7 @@ const createOrGetVendorProfile = async (req, res) => {
       profile = new VendorProfile({
         userId,
         businessName: "N/A",
+        tagline: "", // ✅ added tagline
         contactPerson: user.username || "N/A",
         email: user.email,
         phonePrimary: user.phone || "N/A",

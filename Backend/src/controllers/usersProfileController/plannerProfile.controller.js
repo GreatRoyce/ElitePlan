@@ -31,6 +31,7 @@ const createOrGetPlannerProfile = async (req, res) => {
         email: user.email,
         phonePrimary: user.phone || "N/A",
         companyName: "N/A",
+        tagline: "", // ✅ added tagline
         specialization: [],
         gallery: [],
         socialLinks: {},
@@ -67,6 +68,14 @@ const updatePlannerProfile = async (req, res) => {
 
     const updates = { ...req.body };
 
+    // ✅ Validate tagline length
+    if (updates.tagline && updates.tagline.length > 120) {
+      return res.status(400).json({
+        success: false,
+        message: "Tagline cannot exceed 120 characters",
+      });
+    }
+
     // 🧩 Normalize array fields
     updates.specialization = toArray(updates.specialization);
 
@@ -88,10 +97,11 @@ const updatePlannerProfile = async (req, res) => {
       };
     }
 
-    // 🧱 Update profile
+    updates.lastUpdated = Date.now();
+
     const updated = await PlannerProfile.findByIdAndUpdate(
       profile._id,
-      { ...updates, lastUpdated: Date.now() },
+      { ...updates },
       { new: true, runValidators: true }
     );
 
@@ -129,6 +139,7 @@ const getCurrentPlannerProfile = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Server error retrieving planner profile",
+      error: err.message,
     });
   }
 };

@@ -1,5 +1,5 @@
 // src/components/PlannerPieces/Sidebar.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   CalendarDays,
@@ -15,22 +15,60 @@ import {
   Building2,
   Sparkles,
 } from "lucide-react";
+import api from "../../../utils/axios";
+import elite from "../../../assets/elite.png"; // Adjust path as needed
 
 export default function Sidebar({
-  companyName = "ElitePlan",
-  user: userProp = { username: "Planner" },
+  companyName = <img src={elite} alt="" className="h-8" />,
+  user: userProp,
   activeSection,
   setActiveSection,
   onLogout,
   counts = {}, // { requests, messages, notifications }
 }) {
-  const user = userProp || { username: "Planner" };
+  const [user, setUser] = useState(userProp || { username: "Planner" });
+  const [loading, setLoading] = useState(!userProp);
   const navigate = useNavigate();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  // Fetch user data if not provided
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (userProp) {
+        setUser(userProp);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const response = await api.get("/auth/me"); // Adjust endpoint as needed
+        setUser(response.data.data || response.data.user);
+      } catch (error) {
+        console.error("Failed to fetch user data:", error);
+        // Fallback to localStorage or default
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [userProp]);
+
+  // Store user data when it changes
+  useEffect(() => {
+    if (user && user !== userProp) {
+      localStorage.setItem("user", JSON.stringify(user));
+    }
+  }, [user, userProp]);
+
   const handleLogout = () => {
+    localStorage.removeItem("user");
     if (onLogout) onLogout();
     navigate("/login");
   };
@@ -43,7 +81,7 @@ export default function Sidebar({
   const toggleSidebar = () => setIsCollapsed(!isCollapsed);
 
   // Close mobile sidebar on route change
-  React.useEffect(() => {
+  useEffect(() => {
     if (window.innerWidth < 768) setIsOpen(false);
   }, [location.pathname]);
 
@@ -101,6 +139,11 @@ export default function Sidebar({
     },
   ];
 
+  const getUserDisplayName = () => {
+    if (loading) return "Loading...";
+    return user?.username || user?.name || user?.firstName || "Planner";
+  };
+
   return (
     <>
       {/* Mobile Overlay */}
@@ -145,11 +188,12 @@ export default function Sidebar({
                 />
               </div>
               {!isCollapsed && (
-                <div>
-                  <h1 className="text-xl font-bold text-brand-gold">
-                    {companyName}
-                  </h1>
-                  <p className="text-xs text-brand-ivory/70">Event Planning</p>
+                <div className="flex flex-col">
+                  <img
+                    src={elite}
+                    alt=""
+                    className="flex items-center h-14 w-22"
+                  ></img>
                 </div>
               )}
             </div>
@@ -176,11 +220,11 @@ export default function Sidebar({
                 <User className="text-brand-navy" size={20} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm truncate">
-                  {user.username}
+                <p className="font-semibold text-sm truncate capitalize">
+                  @{getUserDisplayName()}
                 </p>
                 <p className="text-xs text-brand-ivory/60 truncate">
-                  Event Planner
+                  {loading ? "Loading..." : "Welcome back!"}
                 </p>
               </div>
             </div>

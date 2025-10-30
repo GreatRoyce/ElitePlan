@@ -37,7 +37,8 @@ const plannerProfileSchema = new Schema(
       default: [],
     },
     yearsExperience: { type: Number, min: 0 },
-    shortBio: { type: String, maxlength: 250 },
+    shortBio: { type: String, maxlength: 350 },
+    tagline: { type: String, maxlength: 120 },
     plannerType: {
       type: String,
       enum: ["corporate", "wedding", "social", "non-profit", "other"],

@@ -9,24 +9,25 @@ const notificationSchema = new mongoose.Schema(
     },
     sender: {
       type: mongoose.Schema.Types.ObjectId,
-      refPath: "senderModel",
+      refPath: "senderModel", // dynamically reference 'PlannerProfile' or 'VendorProfile' etc.
     },
     senderModel: {
       type: String,
-      enum: ["ClientProfile", "VendorProfile", "PlannerProfile"],
+      enum: ["User", "PlannerProfile", "VendorProfile"],
+      default: "User",
     },
     message: {
       type: String,
       required: true,
     },
+    type: {
+      type: String,
+      enum: ["info", "warning", "alert", "consultation", "system"],
+      default: "info",
+    },
     isRead: {
       type: Boolean,
       default: false,
-    },
-    type: {
-      type: String,
-      enum: ["booking", "payment", "update", "general"],
-      default: "general",
     },
   },
   { timestamps: true }

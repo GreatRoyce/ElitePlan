@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import waved from "../assets/waved.png";
 import eliteplan from "../assets/elite.png";
 import rip from "../assets/rip.png";
+import squeeze from "../assets/squeeze.png";
+
 import {
   FaSquareXTwitter,
   FaSquareInstagram,
@@ -112,7 +114,8 @@ function Connect() {
   const [showSignup, setShowSignup] = useState(false);
 
   return (
-    <div className="pt-16 relative">
+    <div className="pt-16 relative bg-cover bg-center bg-no-repeat"
+    style={{backgroundImage: `url(${squeeze})`}}>
       {/* HERO */}
       <section className="relative h-[100vh] w-full bg-brand-ivory">
         <div
@@ -317,7 +320,7 @@ function Connect() {
 
           <button
             onClick={() => setShowSignup(true)}
-            className="p-4 text-sm font-bold border rounded-2xl text-brand-royal bg-white border-white"
+            className="p-4 text-sm font-bold rounded-2xl text-brand-royal bg-white hover:bg-brand-royal hover:text-white transition-all hover:border"
           >
             Start Planning your Event
           </button>

@@ -1,7 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import { FaBell } from "react-icons/fa";
 
-export default function Topbar({ companyName, notifications = [], toggleSidebar }) {
+export default function Topbar({
+  companyName,
+  notifications = [],
+  toggleSidebar,
+}) {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -26,9 +30,7 @@ export default function Topbar({ companyName, notifications = [], toggleSidebar 
         >
           ☰
         </button>
-        <h1 className="text-xl font-bold text-brand-navy">
-          {companyName} — Planner Lounge
-        </h1>
+        <h1 className="text-xl font-bold text-brand-navy">Planner's Lounge</h1>
       </div>
 
       {/* Right: Notifications */}

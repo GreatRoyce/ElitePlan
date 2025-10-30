@@ -133,6 +133,7 @@ export default function VendorProfile({ initialProfileData, onProfileUpdate }) {
         socialLinks: { facebook: "", instagram: "", twitter: "", website: "" },
         certifications: [],
         isVerified: false,
+        tagline: "",
       });
       setIsEditing(true); // Start in edit mode for new profiles
     }
@@ -446,6 +447,41 @@ export default function VendorProfile({ initialProfileData, onProfileUpdate }) {
             </div>
 
             <div>
+              <label className="font-medium text-navy">
+                Tagline -{" "}
+                <span className="italic text-black/50">
+                  (120 characters max)
+                </span>
+              </label>
+              <input
+                type="text"
+                name="tagline"
+                maxLength={120}
+                value={activeData.tagline || ""}
+                readOnly={!isEditing}
+                onChange={handleInputChange}
+                className={getInputClasses(isEditing)}
+                placeholder="Brief description of your business"
+              />
+              <div className="flex justify-between text-sm mt-1">
+                <span className="text-black/50">
+                  {activeData.tagline?.length || 0}/120 characters
+                </span>
+                {isEditing && activeData.tagline?.length > 100 && (
+                  <span
+                    className={`text-${
+                      activeData.tagline?.length >= 120 ? "royal" : "gold"
+                    }`}
+                  >
+                    {activeData.tagline?.length >= 120
+                      ? "Character limit reached"
+                      : "Approaching limit"}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div>
               <label className="font-medium text-navy">Contact Email *</label>
               <input
                 type="email"
@@ -558,7 +594,8 @@ export default function VendorProfile({ initialProfileData, onProfileUpdate }) {
 
               <div className="md:col-span-2">
                 <label className="font-medium text-navy">
-                  Business Description
+                  Business Description -{" "}
+                  <span className="italic text-black/50">(350 characters max)</span>
                 </label>
                 <textarea
                   name="description"
@@ -568,7 +605,24 @@ export default function VendorProfile({ initialProfileData, onProfileUpdate }) {
                   className={getInputClasses(isEditing)}
                   rows={4}
                   placeholder="Describe your business, services, and what makes you unique..."
+                  maxLength={350}
                 />
+                <div className="flex justify-between text-sm mt-1">
+                  <span className="text-black/60">
+                    {activeData.description?.length || 0}/350 characters
+                  </span>
+                  {isEditing && activeData.description?.length > 300 && (
+                    <span
+                      className={`text-${
+                        activeData.description?.length >= 350 ? "royal" : "gold"
+                      }`}
+                    >
+                      {activeData.description?.length >= 350
+                        ? "Character limit reached"
+                        : "Approaching limit"}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>

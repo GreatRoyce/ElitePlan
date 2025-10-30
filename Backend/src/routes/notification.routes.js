@@ -9,12 +9,12 @@ const {
 
 const authMiddleware = require("../middleware/authMiddleware");
 
-// ✅ Protect all routes with auth middleware
-router.use(authMiddleware);
+// ✅ Always INVOKE middleware factory
+router.use(authMiddleware());
 
 // ✅ Route definitions
-router.get("/", getNotifications);
-router.post("/", addNotification);
-router.patch("/:id/read", markAsRead);
+router.get("/", getNotifications);             // Get current user’s notifications
+router.post("/", addNotification);             // Add a notification
+router.patch("/:id/read", markAsRead);         // Mark one as read
 
 module.exports = router;

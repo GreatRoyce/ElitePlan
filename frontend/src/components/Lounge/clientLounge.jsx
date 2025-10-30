@@ -54,7 +54,7 @@ export default function ClientLounge({
           ...base,
           name: item.businessName,
           category: item.category,
-          description: item.description,
+          description: item.tagline,
           website: item.website,
           jobsCompleted: item.jobsCompleted || 0,
         }
@@ -62,7 +62,7 @@ export default function ClientLounge({
           ...base,
           name: item.companyName,
           category: item.specialization?.join(", "),
-          description: item.shortBio,
+          description: item.tagline,
           eventTypes: item.eventTypesHandled,
           languages: item.languagesSpoken,
         };

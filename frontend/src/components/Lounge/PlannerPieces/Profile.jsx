@@ -138,6 +138,7 @@ export default function Profile() {
             plannerType: "",
             country: "Nigeria",
             state: "",
+            tagline: "",
             serviceRegions: [],
             eventTypesHandled: [],
             languagesSpoken: [],
@@ -473,6 +474,42 @@ export default function Profile() {
                 className={getInputClasses(isEditing)}
                 required
               />
+            </div>
+
+            <div>
+              <label className="font-medium text-navy">
+                Tagline <span className="text-red-900 text-md">*</span> -{" "}
+                <span className="italic text-black/50">
+                  (50 characters max)
+                </span>
+              </label>
+              <textarea
+                type="text"
+                name="tagline"
+                maxLength={50}
+                value={activeData.tagline || ""}
+                readOnly={!isEditing}
+                onChange={handleInputChange}
+                className={getInputClasses(isEditing)}
+                placeholder="Brief description of your business"
+                required
+              />
+              <div className="flex justify-between text-sm mt-1">
+                <span className="text-charcoal/60">
+                  {activeData.tagline?.length || 0}/50 characters
+                </span>
+                {isEditing && (activeData.tagline?.length || 0) > 100 && (
+                  <span
+                    className={`text-${
+                      (activeData.tagline?.length || 0) >= 50 ? "royal" : "gold"
+                    }`}
+                  >
+                    {(activeData.tagline?.length || 0) >= 50
+                      ? "Character limit reached"
+                      : "Approaching limit"}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         )}

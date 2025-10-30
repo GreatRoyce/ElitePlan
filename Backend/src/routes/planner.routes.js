@@ -1,22 +1,20 @@
 const express = require("express");
-const { registerUser } = require("../controllers/auth.controller");
-const authMiddleware = require("../middleware/authMiddleware");
-
 const router = express.Router();
 
-// ✅ Vendor registration
-router.post(
-  "/planner/register",
-  (req, res, next) => {
-    req.body.role = "vendor";
-    next();
-  },
-  registerUser
-);
+const {
+  getNotifications,
+  addNotification,
+  markAsRead,
+} = require("../controllers/notification.controller");
 
-// ✅ Vendor dashboard (protected)
-router.get("/planner/dashboard", authMiddleware(["vendor"]), (req, res) => {
-  res.json({ message: "Welcome to the Planner Dashboard", user: req.user });
-});
+const authMiddleware = require("../middleware/authMiddleware");
+
+// ✅ Protect all routes with auth middleware
+router.use(authMiddleware);
+
+// ✅ Route definitions
+router.get("/", getNotifications);       // Get all notifications for the logged-in user
+router.post("/", addNotification);       // Create a new notification
+router.patch("/:id/read", markAsRead);   // Mark specific notification as read
 
 module.exports = router;
