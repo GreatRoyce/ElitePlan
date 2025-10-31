@@ -6,7 +6,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Check localStorage on first load
+  // Load from localStorage on mount
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     const token = localStorage.getItem("token");
@@ -17,14 +17,14 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  // ✅ Login
-  const login = (userData, token) => {
+  // Login function
+  const login = (userData, token = null) => {
     setUser(userData);
     localStorage.setItem("user", JSON.stringify(userData));
-    localStorage.setItem("token", token);
+    if (token) localStorage.setItem("token", token);
   };
 
-  // ✅ Logout
+  // Logout function
   const logout = () => {
     setUser(null);
     localStorage.removeItem("user");
@@ -38,5 +38,5 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// ✅ Custom hook for easy access
+// Custom hook
 export const useAuth = () => useContext(AuthContext);

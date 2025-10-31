@@ -18,9 +18,60 @@ function SignUpForm() {
     howheard: "",
     specialization: "",
     companyname: "",
+    category: "",
     servicetype: "",
     businessname: "",
   });
+
+  // Specialization options for planners
+  const specializationOptions = [
+    "Wedding Planning",
+    "Corporate Events",
+    "Social Gatherings",
+    "Luxury Events",
+    "Destination Planning",
+    "Cultural Ceremonies",
+    "Non-Profit Events",
+    "Other",
+  ];
+
+  // Category options for vendors
+  const categoryOptions = [
+    "Venue & Accommodation",
+    "Food & Beverage",
+    "Entertainment & Hosting",
+    "Decor & Ambience",
+    "Guest Experience",
+    "Security & Logistics",
+    "Media & Documentation",
+    "Fashion & Beauty",
+    "Transport & Rentals",
+    "Print & Branding",
+    "Tech & Digital",
+    "Health & Safety",
+    "Traditional Engagement",
+    "Kids Entertainment",
+    "Cleaning Services",
+  ];
+
+  // Service type options for vendors
+  const serviceTypeOptions = [
+    "Catering",
+    "Photography",
+    "Videography",
+    "Decoration",
+    "Entertainment",
+    "Venue Rental",
+    "Logistics",
+    "Security",
+    "Makeup & Styling",
+    "Rentals",
+    "Transportation",
+    "Printing",
+    "Technology",
+    "Planning",
+    "Other",
+  ];
 
   // 🧭 Detect role from Connect.jsx
   useEffect(() => {
@@ -54,8 +105,17 @@ function SignUpForm() {
       title: "Planner",
       desc: "Organize unforgettable experiences",
       fields: [
-        { name: "businessname", label: "Business Name" },
-        { name: "specialization", label: "Specialization" },
+        { 
+          name: "businessname", 
+          label: "Business Name",
+          type: "text"
+        },
+        { 
+          name: "specialization", 
+          label: "Specialization",
+          type: "select",
+          options: specializationOptions
+        },
       ],
     },
     {
@@ -63,8 +123,23 @@ function SignUpForm() {
       title: "Vendor",
       desc: "Showcase your services to planners and clients",
       fields: [
-        { name: "companyname", label: "Company Name" },
-        { name: "servicetype", label: "Service Type" },
+        { 
+          name: "companyname", 
+          label: "Company Name",
+          type: "text"
+        },
+        { 
+          name: "servicetype", 
+          label: "Service Type",
+          type: "select",
+          options: serviceTypeOptions
+        },
+        { 
+          name: "category", 
+          label: "Category Type",
+          type: "select",
+          options: categoryOptions
+        },
       ],
     },
   ];
@@ -83,6 +158,38 @@ function SignUpForm() {
       setTimeout(() => navigate("/login"), 2000);
     } catch (err) {
       setMessage(err.response?.data?.message || "Error registering, try again.");
+    }
+  };
+
+  const renderField = (field) => {
+    if (field.type === "select") {
+      return (
+        <select
+          name={field.name}
+          value={formData[field.name]}
+          onChange={handleChange}
+          className="w-full border border-slate-300 rounded-md p-2.5 focus:ring-2 focus:ring-brand-royal outline-none"
+          required
+        >
+          <option value="">Select {field.label}</option>
+          {field.options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      );
+    } else {
+      return (
+        <input
+          type="text"
+          name={field.name}
+          value={formData[field.name]}
+          onChange={handleChange}
+          className="w-full border border-slate-300 rounded-md p-2.5 focus:ring-2 focus:ring-brand-royal outline-none"
+          required
+        />
+      );
     }
   };
 
@@ -228,18 +335,12 @@ function SignUpForm() {
                     </div>
                   </div>
 
-                  {currentRole?.fields.map(({ name, label }) => (
-                    <div key={name}>
+                  {currentRole?.fields.map((field) => (
+                    <div key={field.name}>
                       <label className="font-medium text-slate-700 mb-1 block">
-                        {label}
+                        {field.label}
                       </label>
-                      <input
-                        name={name}
-                        value={formData[name]}
-                        onChange={handleChange}
-                        className="w-full border border-slate-300 rounded-md p-2.5 focus:ring-2 focus:ring-brand-royal outline-none"
-                        required
-                      />
+                      {renderField(field)}
                     </div>
                   ))}
 

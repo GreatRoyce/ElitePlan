@@ -1,3 +1,4 @@
+import React from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -5,22 +6,27 @@ import {
   useLocation,
 } from "react-router-dom";
 import "./App.css";
-import Login from "./pages/login";
-import Nav from "./pages/nav";
-import Lounge from "./components/Lounge/lounge";
-import Register from "./pages/register";
-import Logout from "./pages/logout";
-import Presence from "./components/Presence/presence";
-import NotFound from "./pages/NotFound";
-import Consultform from "./pages/consultform";
-import Suite from "./components/Suite/suite";
-import ProtectedRoute from "./components/ProtectedRoute";
-import { useAuth } from "./context/AuthContext";
-import ClientPresence from "./components/Presence/clientPresence";
+
+// Pages
 import Connect from "./pages/connect"; // Landing page
 import FeaturesSection from "./pages/featuresSection";
 import WhyChooseSection from "./pages/WhyChooseSection";
 import HowItWorks from "./pages/howItWorks";
+import Login from "./pages/login";
+import Register from "./pages/register";
+import Lounge from "./components/Lounge/lounge";
+import ClientPresence from "./components/Presence/clientPresence";
+import Suite from "./components/Suite/suite";
+import Consultform from "./pages/consultform";
+import Logout from "./pages/logout";
+import NotFound from "./pages/NotFound";
+import Nav from "./pages/nav";
+
+// Routes wrappers
+import ProtectedRoute from "./routes/protectedRoute";
+import PublicRoute from "./routes/publicRoute";
+
+import { useAuth } from "./context/AuthContext";
 
 /* -----------------------------
    Layout Wrapper
@@ -29,12 +35,17 @@ function Layout({ children }) {
   const { logout } = useAuth();
   const location = useLocation();
 
-  // Only show Nav on the landing page
-  const showNav =
-    location.pathname === "/" ||
-    location.pathname === "/features-section" ||
-    location.pathname === "/why-choose-section" ||
-    location.pathname === "/how-it-works";
+  // Show Nav only on public pages
+  const publicPaths = [
+    "/",
+    "/features-section",
+    "/why-choose-section",
+    "/how-it-works",
+    "/login",
+    "/register",
+    // "/logout" is intentionally omitted to hide the nav during logout
+  ];
+  const showNav = publicPaths.includes(location.pathname);
 
   return (
     <>
@@ -45,69 +56,78 @@ function Layout({ children }) {
 }
 
 /* -----------------------------
-   Main Route Setup
+   Main Routes
 ----------------------------- */
 function AppContent() {
   const { login } = useAuth();
 
   return (
     <Routes>
-      {/* 🌟 Landing Page */}
+      {/* 🌟 Public Pages */}
       <Route
         path="/"
         element={
-          <Layout>
-            <Connect />
-          </Layout>
+          <PublicRoute>
+            <Layout>
+              <Connect />
+            </Layout>
+          </PublicRoute>
         }
       />
-
       <Route
         path="/features-section"
         element={
-          <Layout>
-            <FeaturesSection />
-          </Layout>
+          <PublicRoute>
+            <Layout>
+              <FeaturesSection />
+            </Layout>
+          </PublicRoute>
         }
       />
-
       <Route
         path="/why-choose-section"
         element={
-          <Layout>
-            <WhyChooseSection />
-          </Layout>
+          <PublicRoute>
+            <Layout>
+              <WhyChooseSection />
+            </Layout>
+          </PublicRoute>
         }
       />
-
       <Route
         path="/how-it-works"
         element={
-          <Layout>
-            <HowItWorks />
-          </Layout>
+          <PublicRoute>
+            <Layout>
+              <HowItWorks />
+            </Layout>
+          </PublicRoute>
         }
       />
 
-      {/* Public Auth Routes */}
+      {/* 🌟 Auth Pages (Guests only) */}
       <Route
         path="/login"
         element={
-          <Layout>
-            <Login onLogin={login} />
-          </Layout>
+          <PublicRoute>
+            <Layout>
+              <Login onLogin={login} />
+            </Layout>
+          </PublicRoute>
         }
       />
       <Route
         path="/register"
         element={
-          <Layout>
-            <Register />
-          </Layout>
+          <PublicRoute>
+            <Layout>
+              <Register />
+            </Layout>
+          </PublicRoute>
         }
       />
 
-      {/* Protected Routes */}
+      {/* 🌟 Protected Pages (Logged-in users only) */}
       <Route
         path="/lounge"
         element={
@@ -118,16 +138,6 @@ function AppContent() {
           </ProtectedRoute>
         }
       />
-      {/* <Route
-        path="/presence"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Presence />
-            </Layout>
-          </ProtectedRoute>
-        }
-      /> */}
       <Route
         path="/clientpresence"
         element={
@@ -158,16 +168,11 @@ function AppContent() {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/logout"
-        element={
-          <ProtectedRoute>
-            <Logout />
-          </ProtectedRoute>
-        }
-      />
 
-      {/* 404 Not Found */}
+      {/* 🌟 Logout (Public route, always accessible) */}
+      <Route path="/logout" element={<Logout />} />
+
+      {/* 🌟 404 Not Found */}
       <Route
         path="*"
         element={
@@ -183,12 +188,10 @@ function AppContent() {
 /* -----------------------------
    Root App Component
 ----------------------------- */
-function App() {
+export default function App() {
   return (
     <Router>
       <AppContent />
     </Router>
   );
 }
-
-export default App;

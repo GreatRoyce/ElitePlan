@@ -1,5 +1,6 @@
 // src/components/VendorLounge.jsx (updated)
 import React, { useState, useEffect, useMemo } from "react";
+import { useAuth } from "../../context/AuthContext";
 import api from "../../utils/axios";
 import { useNavigate } from "react-router-dom";
 
@@ -21,7 +22,9 @@ export default function VendorLounge() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   // Fetch vendor dashboard data
   const fetchDashboard = async () => {
@@ -57,12 +60,23 @@ export default function VendorLounge() {
 
   const handleLogout = async () => {
     try {
+      // It's good practice to inform the backend of logout
       await api.post("/auth/logout");
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {
-      navigate("/login");
+      logout();
+      navigate("/");
     }
+  };
+
+  const handleLogoutWithDelay = async () => {
+    setIsLoggingOut(true);
+    
+    setTimeout(async () => {
+      await handleLogout();
+      setIsLoggingOut(false);
+    }, 2000);
   };
 
   // Filter events based on search & status
@@ -156,13 +170,16 @@ export default function VendorLounge() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
+      
       <Sidebar
         activeSection={activeSection}
         setActiveSection={setActiveSection}
-        handleLogout={handleLogout}
+        handleLogout={handleLogoutWithDelay}
+        isLoggingOut={isLoggingOut}
         isMobileOpen={isMobileOpen}
         setIsMobileOpen={setIsMobileOpen}
       />
+
       <div className="flex-1 flex flex-col lg:ml-0 min-w-0">
         <Topbar
           dashboard={dashboard}
@@ -172,7 +189,8 @@ export default function VendorLounge() {
           refreshing={refreshing}
           showNotifications={showNotifications}
           setShowNotifications={setShowNotifications}
-          handleLogout={handleLogout}
+          handleLogout={handleLogoutWithDelay}
+          isLoggingOut={isLoggingOut}
           activeSection={activeSection}
           activeFilter={activeFilter}
           setActiveFilter={setActiveFilter}

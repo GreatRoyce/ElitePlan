@@ -16,7 +16,7 @@ const VendorProfileSchema = new mongoose.Schema({
   introVideo: { type: String },
   gallery: [{ type: String }],
 
-  category: {
+  category : {
     type: String,
     enum: [
       "Venue & Accommodation",

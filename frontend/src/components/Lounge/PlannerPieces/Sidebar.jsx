@@ -68,9 +68,8 @@ export default function Sidebar({
   }, [user, userProp]);
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
     if (onLogout) onLogout();
-    navigate("/login");
+    navigate("/");
   };
 
   const handleNavigation = (sectionId) => {
@@ -291,17 +290,33 @@ export default function Sidebar({
 
         {/* Logout */}
         <div className="p-4 border-t border-brand-gold/20">
-          <button
-            onClick={handleLogout}
-            className={`flex items-center w-full p-3 text-brand-ivory/80 hover:bg-red-600/20 hover:text-red-300 rounded-xl transition-all duration-200 group ${
-              isCollapsed ? "justify-center" : "justify-start space-x-3"
-            }`}
-            title={isCollapsed ? "Logout" : ""}
-          >
-            <LogOut size={20} />
-            {!isCollapsed && <span className="font-medium">Logout</span>}
-          </button>
+  <button
+    onClick={() => {
+      // Show logging out message
+      const button = event.target;
+      const originalContent = button.innerHTML;
+      
+      button.innerHTML = `
+        <div class="flex items-center ${isCollapsed ? "justify-center" : "justify-start space-x-3"}">
+          <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+          ${!isCollapsed ? '<span class="font-medium">Logging out...</span>' : ''}
         </div>
+      `;
+      button.disabled = true;
+
+      setTimeout(() => {
+        handleLogout();
+      }, 2000);
+    }}
+    className={`flex items-center w-full p-3 text-brand-ivory/80 hover:bg-red-600/20 hover:text-red-300 rounded-xl transition-all duration-200 group ${
+      isCollapsed ? "justify-center" : "justify-start space-x-3"
+    }`}
+    title={isCollapsed ? "Logout" : ""}
+  >
+    <LogOut size={20} />
+    {!isCollapsed && <span className="font-medium">Logout</span>}
+  </button>
+</div>
       </aside>
     </>
   );

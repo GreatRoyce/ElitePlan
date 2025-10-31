@@ -1,5 +1,6 @@
 // src/components/PlannerPieces/PlannerLounge.jsx
 import React, { useEffect, useState, useRef } from "react";
+import { useAuth } from "../../context/AuthContext";
 import api from "../../utils/axios";
 
 // Components
@@ -19,6 +20,7 @@ export default function PlannerLounge() {
   const [activeSection, setActiveSection] = useState("overview");
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef();
+  const { logout } = useAuth();
 
   // Fetch Planner Dashboard
   useEffect(() => {
@@ -101,17 +103,15 @@ export default function PlannerLounge() {
       case "messages":
         return <Messages messages={dashboard.messages} />;
       case "profile":
-        return (
-          <Profile planner={plannerProfile} onSave={handleProfileSave} />
-        );
+        return <Profile planner={plannerProfile} onSave={handleProfileSave} />;
       default:
         return <Overview events={dashboard.events} />;
     }
   };
 
   const handleLogout = () => {
-    console.log("Logging out...");
-    // TODO: clear tokens, redirect to login page
+    // This function is passed to the sidebar
+    logout();
   };
 
   return (

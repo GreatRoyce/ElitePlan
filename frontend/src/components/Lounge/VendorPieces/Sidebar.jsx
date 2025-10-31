@@ -14,6 +14,7 @@ export default function Sidebar({
   activeSection,
   setActiveSection,
   handleLogout,
+  isLoggingOut = false,
   isMobileOpen,
   setIsMobileOpen,
 }) {
@@ -113,10 +114,24 @@ export default function Sidebar({
         <div className="p-4 border-t border-brand.charcoal bg-brand.ivory/50">
           <button
             onClick={() => handleLogout()}
-            className="w-full flex items-center gap-3 px-3 py-3 text-brand.charcoal hover:bg-brand.royal hover:text-brand.ivory rounded-xl transition-all duration-200 group hover:shadow-md"
+            disabled={isLoggingOut}
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group hover:shadow-md ${
+              isLoggingOut
+                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                : "text-brand.charcoal hover:bg-brand.royal hover:text-brand.ivory"
+            }`}
           >
-            <LogOut className="w-5 h-5 transition-transform group-hover:scale-105" />
-            <span className="font-medium text-sm">Logout</span>
+            {isLoggingOut ? (
+              <>
+                <div className="w-5 h-5 border-2 border-brand.charcoal border-t-transparent rounded-full animate-spin" />
+                <span className="font-medium text-sm">Logging out...</span>
+              </>
+            ) : (
+              <>
+                <LogOut className="w-5 h-5 transition-transform group-hover:scale-105" />
+                <span className="font-medium text-sm">Logout</span>
+              </>
+            )}
           </button>
         </div>
       </div>
