@@ -38,11 +38,21 @@ const registerUser = async (req, res) => {
     });
     await newUser.save();
 
+    // 5a. 🧱 Auto-create a ClientProfile if the role is 'client'
+    if (newUser.role === "client") {
+      const clientProfile = new ClientProfile({
+        user: newUser._id,
+        fullName: newUser.username,
+        email: newUser.email,
+        phone: newUser.phone,
+      });
+      await clientProfile.save();
+    }
     // 5️⃣ Generate JWT
     const token = jwt.sign(
       { id: newUser._id, role: newUser.role, email: newUser.email },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "10m" }
     );
 
     // 6️⃣ Respond
@@ -135,7 +145,6 @@ const getMe = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
 
 module.exports = {
   registerUser,

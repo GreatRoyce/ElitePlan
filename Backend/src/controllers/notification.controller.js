@@ -1,68 +1,94 @@
 const Notification = require("../models/notification.model");
+const PlannerProfile = require("../models/plannerProfile.model");
+const VendorProfile = require("../models/vendorProfile.model");
+const ClientProfile = require("../models/clientProfile.model");
 
 // ===================================================
-// 🔔 GET USER NOTIFICATIONS
+// Helper: Get profile model based on userModel
 // ===================================================
-const getNotifications = async (req, res) => {
-  try {
-    const userId = req.user?.id;
-    if (!userId)
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-
-    const notifications = await Notification.find({ user: userId })
-      .sort({ createdAt: -1 })
-      .limit(30); // Slightly increased for flexibility
-
-    return res.status(200).json({ success: true, data: notifications });
-  } catch (error) {
-    console.error("Get Notifications Error:", error);
-    return res.status(500).json({ success: false, message: error.message });
+const getProfileModel = (userModel) => {
+  switch (userModel) {
+    case "PlannerProfile":
+      return PlannerProfile;
+    case "VendorProfile":
+      return VendorProfile;
+    case "ClientProfile":
+      return ClientProfile;
+    default:
+      return null;
   }
 };
 
 // ===================================================
-// ➕ ADD NEW NOTIFICATION
+// CREATE Notification
 // ===================================================
-const addNotification = async (req, res) => {
+const createNotification = async (req, res) => {
   try {
-    const { user, sender, senderModel, message, type } = req.body;
+    const { user, userModel, sender, senderModel, message, type } = req.body;
 
-    if (!user || !message || !type) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing required fields: user, message, and type are mandatory.",
-      });
+    if (!user || !userModel || !message) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Missing required fields" });
     }
 
-    const newNotification = await Notification.create({
+    const notification = await Notification.create({
       user,
+      userModel,
       sender,
       senderModel,
       message,
       type,
     });
 
-    return res.status(201).json({
-      success: true,
-      message: "Notification created successfully.",
-      data: newNotification,
-    });
+    res.status(201).json({ success: true, notification });
   } catch (error) {
-    console.error("Add Notification Error:", error);
-    return res.status(500).json({ success: false, message: error.message });
+    console.error("Error creating notification:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
 // ===================================================
-// 📩 MARK NOTIFICATION AS READ
+// GET My Notifications
+// ===================================================
+const getNotifications = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or missing authentication data",
+      });
+    }
+
+    const notifications = await Notification.find({
+      user: userId, // Query by the main User ID
+    })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean(); // Use lean for better performance as we are not modifying docs here
+
+    res.status(200).json({
+      success: true,
+      count: notifications.length,
+      data: notifications,
+    });
+  } catch (error) {
+    console.error("Error fetching notifications:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// ===================================================
+// MARK Notification as Read
 // ===================================================
 const markAsRead = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id;
 
-    const notification = await Notification.findOneAndUpdate(
-      { _id: id, user: userId },
+    const notification = await Notification.findByIdAndUpdate(
+      id,
       { isRead: true },
       { new: true }
     );
@@ -70,22 +96,72 @@ const markAsRead = async (req, res) => {
     if (!notification) {
       return res
         .status(404)
-        .json({ success: false, message: "Notification not found or not yours." });
+        .json({ success: false, message: "Notification not found" });
     }
 
-    return res.status(200).json({
-      success: true,
-      message: "Notification marked as read.",
-      data: notification,
-    });
+    res.status(200).json({ success: true, notification });
   } catch (error) {
-    console.error("Mark Notification Read Error:", error);
-    return res.status(500).json({ success: false, message: error.message });
+    console.error("Error marking notification as read:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
+// ===================================================
+// DELETE Notification
+// ===================================================
+const deleteNotification = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const notification = await Notification.findByIdAndDelete(id);
+    if (!notification) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Notification not found" });
+    }
+
+    res.status(200).json({ success: true, message: "Notification deleted" });
+  } catch (error) {
+    console.error("Error deleting notification:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// ===================================================
+// MARK ALL Notifications as Read
+// ===================================================
+const markAllAsRead = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const result = await Notification.updateMany(
+      { user: userId, isRead: false },
+      { $set: { isRead: true } }
+    );
+
+    res
+      .status(200)
+      .json({ success: true, modifiedCount: result.modifiedCount });
+  } catch (error) {
+    console.error("Error marking all notifications as read:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// ===================================================
+// EXPORTS (modules at the bottom)
+// ===================================================
 module.exports = {
+  createNotification,
   getNotifications,
-  addNotification,
   markAsRead,
+  markAllAsRead,
+  deleteNotification,
 };

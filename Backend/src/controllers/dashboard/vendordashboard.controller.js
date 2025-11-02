@@ -1,4 +1,5 @@
 const VendorDashboard = require("../../models/dashboard/vendordashboard.model");
+const Notification = require("../../models/notification.model");
 const { updateVendorDashboard } = require("../../helpers/vendor/vendorHelpers");
 
 /**
@@ -33,6 +34,22 @@ const getVendorDashboard = async (req, res) => {
         },
         averageRating: 0,
       });
+    }
+
+    // Migrate any embedded notifications to the main Notification collection
+    if (dashboard.notifications && dashboard.notifications.length > 0) {
+      const newNotifications = dashboard.notifications.map((n) => ({
+        user: vendorId,
+        userModel: "VendorProfile",
+        message: n.message,
+        type: n.type,
+        createdAt: n.date,
+      }));
+      await Notification.insertMany(newNotifications);
+
+      // Clear the old notifications
+      dashboard.notifications = [];
+      await dashboard.save();
     }
 
     // ♻️ Recalculate metrics (optional but useful)

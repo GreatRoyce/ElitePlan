@@ -1,6 +1,10 @@
 const PlannerDashboard = require("../../models/dashboard/plannerdashboard.model");
 const VendorDashboard = require("../../models/dashboard/vendordashboard.model");
-const { updateDashboard, addPayment } = require("../../helpers/planner/plannerhelpers");
+const InitialConsultation = require("../../models/initialConsultation.model");
+const {
+  updateDashboard,
+  addPayment,
+} = require("../../helpers/planner/plannerhelpers");
 
 // @desc Fetch planner dashboard
 // @route GET /api/planner/dashboard
@@ -13,8 +17,9 @@ const getDashboard = async (req, res) => {
     const plannerId = req.user.id;
 
     // 🧩 Find existing dashboard
-    let dashboard = await PlannerDashboard.findOne({ planner: plannerId })
-      .populate("events.client events.vendors upcomingDeadlines.event");
+    let dashboard = await PlannerDashboard.findOne({
+      planner: plannerId,
+    }).populate("events.client events.vendors upcomingDeadlines.event");
 
     // 🆕 Auto-create dashboard if it doesn’t exist
     if (!dashboard) {
@@ -35,8 +40,19 @@ const getDashboard = async (req, res) => {
     // ♻️ Recalculate metrics (optional)
     await updateDashboard(dashboard);
 
+    //  Fetch pending requests separately and attach them
+    // The frontend expects an array of request objects, not just a count.
+    const pendingRequests = await InitialConsultation.find({
+      user: plannerId,
+      status: "pending",
+    }).populate("user", "username imageCover");
+
+    // Convert to a plain object to attach the new property
+    const dashboardObject = dashboard.toObject();
+    dashboardObject.pendingRequests = pendingRequests;
+
     // ✅ Return dashboard
-    res.json({ success: true, data: dashboard });
+    res.json({ success: true, data: dashboardObject });
   } catch (error) {
     console.error("❌ getDashboard error:", error);
     res.status(500).json({ success: false, message: "Server error" });
@@ -178,9 +194,7 @@ const addRating = async (req, res) => {
     // 🔢 Recalculate average rating
     const totalScore = dashboard.ratings.reduce((sum, r) => sum + r.score, 0);
     dashboard.averageRating =
-      dashboard.ratings.length > 0
-        ? totalScore / dashboard.ratings.length
-        : 0;
+      dashboard.ratings.length > 0 ? totalScore / dashboard.ratings.length : 0;
 
     await dashboard.save();
 
@@ -198,7 +212,6 @@ const addRating = async (req, res) => {
   }
 };
 
-
 // ✅ Add vendor to an event
 const recruitVendor = async (req, res) => {
   try {
@@ -208,17 +221,25 @@ const recruitVendor = async (req, res) => {
     // 🔹 Find planner dashboard
     const dashboard = await PlannerDashboard.findOne({ planner: plannerId });
     if (!dashboard)
-      return res.status(404).json({ success: false, message: "Planner dashboard not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Planner dashboard not found" });
 
     // 🔹 Find target event
     const event = dashboard.events.id(eventId);
     if (!event)
-      return res.status(404).json({ success: false, message: "Event not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Event not found" });
 
     // 🔹 Prevent duplicate vendor assignment
-    const alreadyAdded = event.vendors.some(v => v.vendor.toString() === vendorId);
+    const alreadyAdded = event.vendors.some(
+      (v) => v.vendor.toString() === vendorId
+    );
     if (alreadyAdded)
-      return res.status(400).json({ success: false, message: "Vendor already recruited" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Vendor already recruited" });
 
     // 🔹 Add vendor to planner's event
     event.vendors.push({ vendor: vendorId, role });
@@ -250,7 +271,8 @@ const recruitVendor = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Vendor successfully tied to event and synced to vendor dashboard",
+      message:
+        "Vendor successfully tied to event and synced to vendor dashboard",
       data: {
         event: event,
         vendorDashboard: vendorDashboard.assignedEvents,
@@ -260,7 +282,6 @@ const recruitVendor = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 
 // ✅ Default export object
 module.exports = {

@@ -1,213 +1,164 @@
-const InitialConsultation = require("../models/initialConsultation.model");
-const User = require("../models/user.model");
-const dayjs = require("dayjs");
+const Consultation = require("../models/initialConsultation.model");
+const { createNotification } = require("../helpers/notificationHelper");
 
-// ===================================================
-// 🎯 CREATE A NEW INITIAL CONSULTATION
-// ===================================================
-/**
- * @desc Create new consultation (Client → Planner/Vendor)
- * @route POST /api/v1/consultation/initial-consultation
- * @access Private (client)
- */
+// ========================================================
+// Create Consultation Request
+// ========================================================
 const createConsultation = async (req, res) => {
   try {
-    const userId = req.user?.id;
-    if (!userId)
-      return res.status(401).json({ success: false, message: "Unauthorized." });
-
-    const {
-      targetUser,
-      targetType, // "Planner" or "Vendor"
-      fullName,
-      eventType,
-      eventDate,
-      eventTime,
-      eventLocation,
-      guests,
-      services,
-      vendorType,
-      notes,
-      consent,
-      contactMethod,
-    } = req.body;
-
-    // ✅ Validate required fields
-    if (!fullName || !eventType || !eventDate || !targetUser || !targetType) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Please provide full name, event type, event date, target user, and target type.",
-      });
-    }
-
-    // ✅ Check if target user exists
-    const receiver = await User.findById(targetUser);
-    if (!receiver)
-      return res
-        .status(404)
-        .json({ success: false, message: "Target user not found." });
-
-    // ✅ Normalize and parse eventDate
-    const parsedDate = dayjs(eventDate).startOf("day").toDate();
-
-    // ✅ Prevent duplicate consultation for same day + target
-    const existing = await InitialConsultation.findOne({
-      user: userId,
-      targetUser,
-      targetType,
-      eventDate: {
-        $gte: dayjs(parsedDate).startOf("day").toDate(),
-        $lt: dayjs(parsedDate).endOf("day").toDate(),
-      },
-    });
-
-    if (existing) {
-      return res.status(409).json({
-        success: false,
-        message:
-          "You already have a consultation scheduled with this user on that date.",
-      });
-    }
-
-    // ✅ Create new consultation
-    const newConsultation = await InitialConsultation.create({
-      user: userId,
-      targetUser,
-      targetType,
-      fullName,
-      eventType,
-      eventDate: parsedDate,
-      eventTime,
-      eventLocation,
-      guests,
-      services,
-      vendorType,
-      notes,
-      consent,
-      contactMethod,
+    const consultation = await Consultation.create({
+      ...req.body,
+      user: req.user._id, // whoever is making the request
       status: "pending",
     });
 
-    return res.status(201).json({
-      success: true,
-      message: "Consultation request sent successfully.",
-      data: newConsultation,
-    });
-  } catch (error) {
-    console.error("Consultation creation error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Error creating consultation.",
-      error: error.message,
-    });
+    // --- Create Notification ---
+    // Prepare sender profile from middleware
+    const senderProfile = req.profile
+      ? {
+          _id: req.profile._id,
+          fullName: req.profile.fullName,
+          businessName: req.profile.businessName,
+          imageCover: req.profile.imageCover,
+          profileType: req.profileType,
+        }
+      : {
+          _id: req.user._id,
+          fullName: req.user.username, // Fallback to username
+          businessName: "",
+          imageCover: "",
+          profileType: "User",
+        };
+
+    // Call the helper to create the notification
+    await createNotification(
+      consultation.targetUser, // The ID of the planner/vendor profile
+      consultation.targetType, // "PlannerProfile" or "VendorProfile"
+      senderProfile,
+      `You have a new consultation request from ${senderProfile.fullName}.`,
+      "consultation"
+    );
+
+    res.status(201).json({ success: true, data: consultation });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
-// ===================================================
-// 👤 GET CONSULTATIONS FOR LOGGED-IN USER
-// ===================================================
+// ========================================================
+// Get My Consultations (Client/Planner/Vendor)
+// ========================================================
 const getMyConsultations = async (req, res) => {
   try {
-    const { id: userId, role } = req.user;
-    let consultations;
+    const userId = req.user._id;
+    const userRole = req.user.role; // depends on your user schema
 
-    if (role === "planner") {
-      // Planner/Vendor: find consultations where they are the targetUser
-      consultations = await InitialConsultation.find({ targetUser: userId })
-        .populate("user", "username email")
-        .sort({ createdAt: -1 });
-    } else if (role === "client") {
-      // Client (or other roles): find consultations they created
-      consultations = await InitialConsultation.find({ user: userId })
-        .populate("planner", "fullName email specialization")
-        .sort({ createdAt: -1 });
+    let filter = { status: "pending" };
+
+    // 🧠 Adjust filtering depending on who’s logged in
+    if (userRole === "Client") {
+      filter.user = userId;
+    } else if (userRole === "Planner") {
+      filter.planner = userId;
+    } else if (userRole === "Vendor") {
+      filter.vendor = userId;
     }
 
-    return res.status(200).json({
-      success: true,
-      count: consultations.length,
-      data: consultations,
-    });
-  } catch (error) {
-    console.error("Get Consultations Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Error fetching user consultations",
-      error: error.message,
-    });
+    let query = Consultation.find(filter).sort({ createdAt: -1 });
+
+    // Conditionally populate based on what's needed and what exists in the schema.
+    // The 'user' field (the creator) should always be populated.
+    query = query.populate("user", "username name imageCover");
+
+    // If the schema supports it, populate the target of the consultation.
+    // This avoids the StrictPopulateError.
+    if (Consultation.schema.path("targetUser")) {
+      query = query.populate("targetUser", "username name imageCover");
+    }
+    const consultations = await query.exec();
+
+    console.log("✅ Fetched consultations for", userRole, ":", consultations);
+
+    res.status(200).json(consultations);
+  } catch (err) {
+    console.error("❌ Error in getMyConsultations:", err);
+    res.status(500).json({ message: "Server error fetching consultations" });
   }
 };
 
-// ===================================================
-// 🕹 UPDATE CONSULTATION STATUS
-// ===================================================
+// ========================================================
+// Update Consultation Status
+// ========================================================
 const updateConsultationStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!["pending", "approved", "declined"].includes(status))
+    if (!["approved", "declined"].includes(status)) {
       return res
         .status(400)
-        .json({ success: false, message: "Invalid status value" });
+        .json({ message: "Status must be 'approved' or 'declined'" });
+    }
 
-    const consultation = await InitialConsultation.findByIdAndUpdate(
+    const updated = await Consultation.findByIdAndUpdate(
       id,
       { status },
       { new: true }
     );
 
-    if (!consultation)
-      return res
-        .status(404)
-        .json({ success: false, message: "Consultation not found" });
+    if (!updated) {
+      return res.status(404).json({ message: "Consultation not found" });
+    }
 
-    return res.status(200).json({
-      success: true,
-      message: "Consultation status updated successfully",
-      data: consultation,
-    });
-  } catch (error) {
-    console.error("Update Consultation Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Error updating consultation",
-      error: error.message,
-    });
+    res.status(200).json(updated);
+  } catch (err) {
+    console.error("❌ Error updating consultation:", err);
+    res.status(500).json({ message: "Error updating consultation" });
   }
 };
 
-// ===================================================
-// ❌ DELETE CONSULTATION
-// ===================================================
+// ========================================================
+// Delete Consultation
+// ========================================================
 const deleteConsultation = async (req, res) => {
   try {
-    const { id } = req.params;
-    const consultation = await InitialConsultation.findByIdAndDelete(id);
-
-    if (!consultation)
-      return res
-        .status(404)
-        .json({ success: false, message: "Consultation not found" });
-
-    return res.status(200).json({
-      success: true,
-      message: "Consultation deleted successfully",
-    });
-  } catch (error) {
-    console.error("Delete Consultation Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Error deleting consultation",
-      error: error.message,
-    });
+    const deleted = await Consultation.findByIdAndDelete(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ message: "Consultation not found" });
+    }
+    res.status(200).json({ message: "Consultation deleted" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
+// ========================================================
+// Get All Pending Consultations (for planners/vendors)
+// ========================================================
+const getPendingConsultations = async (req, res) => {
+  try {
+    const consultations = await Consultation.find({ status: "pending" })
+      .populate("user", "username name imageCover")
+      .populate("planner", "username name imageCover")
+      .populate("vendor", "username name imageCover")
+      .sort({ createdAt: -1 });
+
+    console.log("✅ Fetched all pending consultations:", consultations.length);
+
+    res.status(200).json(consultations);
+  } catch (err) {
+    console.error("❌ Error fetching pending consultations:", err);
+    res.status(500).json({ message: "Server error fetching pending requests" });
+  }
+};
+
+// ========================================================
+// 📦 EXPORT MODULES AT BOTTOM
+// ========================================================
 module.exports = {
   createConsultation,
   getMyConsultations,
   updateConsultationStatus,
   deleteConsultation,
+  getPendingConsultations,
 };

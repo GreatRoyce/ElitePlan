@@ -14,7 +14,7 @@ const initialConsultationSchema = new mongoose.Schema(
     },
     targetType: {
       type: String,
-      enum: ["Planner", "Vendor"],
+      enum: ["PlannerProfile", "VendorProfile"],
       required: true,
     },
 
@@ -45,6 +45,7 @@ const initialConsultationSchema = new mongoose.Schema(
       type: String,
       enum: ["pending", "approved", "declined", "completed"],
       default: "pending",
+      index: true, // ✅ index for quick querying
     },
     remarks: { type: String },
 
@@ -52,10 +53,10 @@ const initialConsultationSchema = new mongoose.Schema(
     rejectedAt: { type: Date },
     completedAt: { type: Date },
   },
-  { timestamps: true } // 👈 handles createdAt + updatedAt
+  { timestamps: true }
 );
 
-// ✅ Validation
+// ✅ Validation: max guests >= min guests
 initialConsultationSchema.pre("validate", function (next) {
   const guests = this.guests;
   if (guests?.min != null && guests?.max != null && guests.max < guests.min) {
@@ -68,6 +69,7 @@ initialConsultationSchema.pre("validate", function (next) {
 initialConsultationSchema.index({ user: 1 });
 initialConsultationSchema.index({ targetUser: 1 });
 initialConsultationSchema.index({ targetType: 1 });
+initialConsultationSchema.index({ status: 1, targetUser: 1 }); // for pending requests
 
 // ✅ Virtuals
 initialConsultationSchema.virtual("client", {

@@ -1,25 +1,58 @@
+// controllers/bookmark.controller.js
+const mongoose = require("mongoose");
 const Bookmark = require("../models/bookmark.model");
+const VendorProfile = require("../models/vendorProfile.model"); // adjust path/name if different
+const PlannerProfile = require("../models/plannerProfile.model"); // adjust path/name if different
 
-/**
- * 🟢 Create a new bookmark
- * POST /api/bookmarks
- */
+// Create a bookmark
 const createBookmark = async (req, res) => {
   try {
-    const clientId = req.user._id; // from token
-    const { targetId, targetModel } = req.body;
+    const clientId = req.user?._id || req.user?.id;
+    // normalize possible keys
+    const rawTargetId = req.body.targetId || req.body.target;
+    const targetId = rawTargetId && String(rawTargetId).trim();
+    let { targetModel } = req.body;
 
-    console.log("User:", req.user);
-    console.log("Body:", req.body);
+    if (!clientId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    // ✅ Validate required fields
-    if (!targetId || !targetModel) {
-      return res
-        .status(400)
-        .json({ message: "targetId and targetModel are required." });
+    // normalize model string capitalization if provided
+    if (typeof targetModel === "string") {
+      targetModel = targetModel === targetModel.toLowerCase()
+        ? targetModel.charAt(0).toUpperCase() + targetModel.slice(1)
+        : targetModel;
     }
 
-    // ✅ Create new bookmark document
+    // Accept only the two allowed models
+    const allowed = ["VendorProfile", "PlannerProfile"];
+    if (!targetId || !targetModel || !allowed.includes(targetModel)) {
+      return res.status(400).json({ success: false, message: "targetId and valid targetModel are required." });
+    }
+
+    // validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(targetId)) {
+      return res.status(400).json({ success: false, message: "Invalid targetId" });
+    }
+
+    // ensure target exists in respective collection
+    const targetModelMap = {
+      VendorProfile: VendorProfile,
+      PlannerProfile: PlannerProfile,
+    };
+
+    const Model = targetModelMap[targetModel];
+    if (!Model) return res.status(400).json({ success: false, message: "Invalid targetModel" });
+
+    const targetDoc = await Model.findById(targetId).lean();
+    if (!targetDoc) {
+      return res.status(404).json({ success: false, message: "Target profile not found" });
+    }
+
+    // prevent duplicate (safeguard)
+    const exists = await Bookmark.findOne({ client: clientId, targetId, targetModel });
+    if (exists) {
+      return res.status(200).json({ success: true, message: "Already bookmarked", bookmark: exists });
+    }
+
     const bookmark = await Bookmark.create({
       client: clientId,
       targetId,
@@ -33,7 +66,7 @@ const createBookmark = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error creating bookmark:", error);
-    res.status(400).json({
+    res.status(500).json({
       success: false,
       message: "Error creating bookmark.",
       error: error.message,
@@ -41,10 +74,7 @@ const createBookmark = async (req, res) => {
   }
 };
 
-/**
- * 📜 Get all bookmarks for logged-in client
- * GET /api/bookmarks
- */
+// Get current user's bookmarks
 const getMyBookmarks = async (req, res) => {
   try {
     const clientId = req.user?._id || req.user?.id;
@@ -55,11 +85,10 @@ const getMyBookmarks = async (req, res) => {
       });
     }
 
-    // ✅ Populate the referenced profile (Vendor or Planner)
     const bookmarks = await Bookmark.find({ client: clientId })
       .populate({
         path: "targetId",
-        select: "username name businessName category image location",
+        select: "username name businessName category image location city state country",
       })
       .sort({ createdAt: -1 });
 
@@ -78,14 +107,13 @@ const getMyBookmarks = async (req, res) => {
   }
 };
 
-/**
- * 🗑️ Delete a bookmark
- * DELETE /api/bookmarks/:targetId
- */
+// Delete a bookmark by targetId (route param) OR fallback to body
 const deleteBookmark = async (req, res) => {
   try {
     const clientId = req.user?._id || req.user?.id;
-    const { targetId } = req.params;
+    const paramTargetId = req.params?.targetId;
+    const bodyTargetId = req.body?.targetId || req.body?.target;
+    const targetId = paramTargetId || bodyTargetId;
 
     if (!clientId || !targetId) {
       return res.status(400).json({

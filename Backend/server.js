@@ -11,11 +11,16 @@ const connectDB = require("./database/dbConnection");
 // =======================
 dotenv.config();
 const app = express();
+app.set("etag", false); // Disable ETag generation for all responses
 
 // =======================
 // ⚙️ Database Connection
 // =======================
 connectDB();
+console.log(
+  "🔍 Attempting to connect to MongoDB with URI:",
+  process.env.MONGO_URI
+);
 
 // =======================
 // 🔧 Middleware
@@ -25,7 +30,7 @@ const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
 app.use(
   cors({
     origin: process.env.MODE === "react" ? CLIENT_URL : "*", // Allow all origins in Postman mode
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
   })
 );
