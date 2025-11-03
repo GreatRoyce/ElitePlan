@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import MessagesSection from "../Lounge/ClientPieces/MessagesSection";
 import {
   User,
   Calendar,
@@ -301,6 +302,14 @@ function ClientPresence({ user, onClose, onProfileSaved }) {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Message Section - Pass the client's ID */}
+        <div className="mt-8">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">
+            My Conversations
+          </h2>
+          <MessagesSection clientId={user?._id} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

@@ -84,6 +84,7 @@ export default function VendorLounge() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [lastRefreshed, setLastRefreshed] = useState(null);
 
   const navigate = useNavigate();
@@ -217,12 +218,11 @@ export default function VendorLounge() {
   const counts = useMemo(
     () => ({
       requests: dashboard?.pendingRequests?.length || 0,
-      messages:
-        dashboard?.unreadMessages?.length || dashboard?.messages?.length || 0,
+      messages: unreadMessagesCount,
       notifications: unreadNotificationsCount,
       events: dashboard?.assignedEvents?.length || 0,
     }),
-    [dashboard, unreadNotificationsCount]
+    [dashboard, unreadNotificationsCount, unreadMessagesCount]
   );
 
   // Handle section changes with smooth transitions
@@ -265,7 +265,9 @@ export default function VendorLounge() {
         case "pending":
           return <VendorPendingRequests />;
         case "messages":
-          return <Messages />;
+          return (
+            <Messages vendorId={user?._id} onUnreadCountChange={setUnreadMessagesCount} />
+          );
         case "profile":
           return (
             <MyProfile

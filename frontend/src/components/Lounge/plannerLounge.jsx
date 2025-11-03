@@ -26,6 +26,7 @@ export default function PlannerLounge() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const navigate = useNavigate();
 
@@ -74,7 +75,7 @@ export default function PlannerLounge() {
   const pendingRequestsCount = dashboard?.pendingRequests?.length || 0;
   const counts = {
     requests: pendingRequestsCount,
-    messages: dashboard?.messages?.length || 0,
+    messages: unreadMessagesCount,
     notifications: unreadNotificationsCount,
   };
 
@@ -103,7 +104,12 @@ export default function PlannerLounge() {
       case "requests":
         return <PendingRequests />;
       case "messages":
-        return <Messages messages={dashboard.messages} />;
+        return (
+          <Messages
+            plannerId={user?._id}
+            onUnreadCountChange={setUnreadMessagesCount}
+          />
+        );
       case "profile":
         return <Profile planner={plannerProfile} onSave={handleProfileSave} />;
       case "notifications":

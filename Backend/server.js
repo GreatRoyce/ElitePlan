@@ -11,7 +11,7 @@ const connectDB = require("./database/dbConnection");
 // =======================
 dotenv.config();
 const app = express();
-app.set("etag", false); // Disable ETag generation for all responses
+app.set("etag", false); // Disable ETag generation
 
 // =======================
 // ⚙️ Database Connection
@@ -29,16 +29,10 @@ const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
 
 app.use(
   cors({
-    origin: process.env.MODE === "react" ? CLIENT_URL : "*", // Allow all origins in Postman mode
+    origin: process.env.MODE === "react" ? CLIENT_URL : "*",
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
   })
-);
-
-console.log(
-  process.env.MODE === "react"
-    ? `🔒 React mode: CORS restricted to ${CLIENT_URL}`
-    : "🧪 Postman mode: CORS open to all origins"
 );
 
 if (process.env.NODE_ENV !== "production") {
@@ -49,7 +43,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // =======================
-// 🖼️ Static Files (Uploads)
+// 🖼️ Static Files
 // =======================
 const __dirnameResolved = path.resolve();
 app.use(
@@ -75,8 +69,6 @@ app.get("/", (req, res) => {
 // =======================
 // 🧩 Import Routes
 // =======================
-
-// Core platform routes
 const clientRouter = require("./src/routes/client.routes");
 const plannerRouter = require("./src/routes/dashboard/plannerdashboard.routes");
 const vendorRouter = require("./src/routes/vendor.routes");
@@ -96,7 +88,8 @@ const clientProfileRoutes = require("./src/routes/usersRoutesController/clientPr
 const plannerProfileRoutes = require("./src/routes/usersRoutesController/plannerProfile.routes");
 const vendorProfileRoutes = require("./src/routes/usersRoutesController/vendorProfile.routes");
 
-// Consultation + Bookmarks
+// Consultation + Bookmarks + Message
+const messageRoutes = require("./src/routes/message.routes");
 const initialConsultationRoutes = require("./src/routes/initialConsultation.routes");
 const bookmarkRoutes = require("./src/routes/bookmark.routes");
 
@@ -122,9 +115,11 @@ app.use("/api/v1/client-profile", clientProfileRoutes);
 app.use("/api/v1/planner-profile", plannerProfileRoutes);
 app.use("/api/v1/vendor-profile", vendorProfileRoutes);
 
-// Consultation + Bookmarks
+// Consultation + Bookmarks + Message
 app.use("/api/v1/consultation", initialConsultationRoutes);
 app.use("/api/v1/bookmarks", bookmarkRoutes);
+app.use("/api/v1/messages", messageRoutes);
+
 
 // =======================
 // ⚠️ Global Error Handler
@@ -146,9 +141,55 @@ app.use((err, req, res, next) => {
 });
 
 // =======================
-// 🚀 Start Server
+// 🚀 Start Server with Socket.IO
 // =======================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const http = require("http");
+const server = http.createServer(app);
+
+const { Server } = require("socket.io");
+const io = new Server(server, {
+  cors: {
+    origin: CLIENT_URL,
+    methods: ["GET", "POST"],
+  },
+});
+
+// Connected users storage
+const connectedUsers = {};
+
+io.on("connection", (socket) => {
+  console.log("🔌 New socket connected:", socket.id);
+
+  // Join with userId and role
+  socket.on("join", ({ userId, role }) => {
+    connectedUsers[userId] = { socketId: socket.id, role };
+    console.log(`${role} connected: ${userId}`);
+  });
+
+  // Send message to a specific user
+  socket.on("send_message", ({ toUserId, message, fromUserId }) => {
+    const recipient = connectedUsers[toUserId];
+    if (recipient) {
+      io.to(recipient.socketId).emit("receive_message", {
+        message,
+        fromUserId,
+      });
+    }
+  });
+
+  // Disconnect
+  socket.on("disconnect", () => {
+    for (const userId in connectedUsers) {
+      if (connectedUsers[userId].socketId === socket.id) {
+        console.log(`🔌 User disconnected: ${userId}`);
+        delete connectedUsers[userId];
+        break;
+      }
+    }
+  });
+});
+
+server.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
 });

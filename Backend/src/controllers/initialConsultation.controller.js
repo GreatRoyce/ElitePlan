@@ -2,33 +2,30 @@ const Consultation = require("../models/initialConsultation.model");
 const { createNotification } = require("../helpers/notificationHelper");
 const PlannerProfile = require("../models/plannerProfile.model");
 const VendorProfile = require("../models/vendorProfile.model");
+const Message = require("../models/message.model");
 
 // ========================================================
 // Create Consultation Request
 // ========================================================
 const createConsultation = async (req, res) => {
   try {
-    // Create the consultation entry
     const consultation = await Consultation.create({
       ...req.body,
-      user: req.user._id, // requester
+      user: req.user._id,
       status: "pending",
     });
 
-    // Determine sender profile using the name from the form
+    // Sender info
     const senderProfile = {
       _id: req.user._id,
-      // Use the fullName from the form body, fallback to user's name if available
       fullName: req.body.fullName || req.user.fullName || "A client",
       profileType: req.profileType || "User",
     };
 
-    // Determine recipient
-    const recipientUserId = consultation.targetUser; // This is the User._id
-    const recipientModel = consultation.targetType; // "PlannerProfile" or "VendorProfile"
+    const recipientUserId = consultation.targetUser;
+    const recipientModel = consultation.targetType;
 
-    // Find the correct Profile ID for the notification recipient
-    let recipientProfileId = recipientUserId; // Fallback to user ID
+    let recipientProfileId = recipientUserId;
     if (recipientModel === "PlannerProfile") {
       const profile = await PlannerProfile.findOne({ user: recipientUserId })
         .select("_id")
@@ -41,14 +38,11 @@ const createConsultation = async (req, res) => {
       if (profile) recipientProfileId = profile._id;
     }
 
-    // Create a notification for the recipient
+    // Create notification
     await createNotification(
-      recipientProfileId, // Use the correct Profile ID
+      recipientProfileId,
       recipientModel,
-      {
-        _id: senderProfile._id, // Pass only the sender's ID
-        profileType: senderProfile.profileType, // and their model type
-      },
+      { _id: senderProfile._id, profileType: senderProfile.profileType },
       `You have a new consultation request from ${senderProfile.fullName}.`,
       "consultation"
     );
@@ -61,39 +55,29 @@ const createConsultation = async (req, res) => {
 };
 
 // ========================================================
-// Get My Consultations (Client/Planner/Vendor)
+// Get My Consultations
 // ========================================================
 const getMyConsultations = async (req, res) => {
   try {
     const userId = req.user._id;
-    const userRole = req.user.role; // depends on your user schema
+    const userRole = req.user.role;
 
     let filter = { status: "pending" };
-
-    // 🧠 Adjust filtering depending on who’s logged in
-    if (userRole === "Client") {
-      filter.user = userId;
-    } else if (userRole === "Planner") {
-      filter.planner = userId;
-    } else if (userRole === "Vendor") {
-      filter.vendor = userId;
-    }
+    if (userRole === "Client") filter.user = userId;
+    else if (userRole === "Planner") filter.planner = userId;
+    else if (userRole === "Vendor") filter.vendor = userId;
 
     let query = Consultation.find(filter).sort({ createdAt: -1 });
 
-    // Conditionally populate based on what's needed and what exists in the schema.
-    // The 'user' field (the creator) should always be populated.
     query = query.populate("user", "username name imageCover");
 
-    // If the schema supports it, populate the target of the consultation.
-    // This avoids the StrictPopulateError.
     if (Consultation.schema.path("targetUser")) {
       query = query.populate("targetUser", "username name imageCover");
     }
+
     const consultations = await query.exec();
 
-    console.log("✅ Fetched consultations for", userRole, ":", consultations);
-
+    console.log("✅ Fetched consultations for", userRole, consultations.length);
     res.status(200).json(consultations);
   } catch (err) {
     console.error("❌ Error in getMyConsultations:", err);
@@ -115,22 +99,73 @@ const updateConsultationStatus = async (req, res) => {
         .json({ message: "Status must be 'approved' or 'declined'" });
     }
 
+    // Update consultation status
     const updated = await Consultation.findByIdAndUpdate(
       id,
-      { status },
+      {
+        status,
+        approvedAt: status === "approved" ? new Date() : undefined,
+        rejectedAt: status === "declined" ? new Date() : undefined,
+      },
       { new: true }
-    );
+    )
+      .populate("client", "_id firstName username email imageCover") // virtual
+      .populate("receiver", "_id firstName username email imageCover") // virtual
+      .populate("user", "_id firstName username email imageCover"); // original user as fallback
 
     if (!updated) {
       return res.status(404).json({ message: "Consultation not found" });
     }
 
-    res.status(200).json(updated);
+    // Determine the client (recipient)
+    const client =
+      updated.client ||
+      (updated.targetType === "ClientProfile" ? updated.receiver : null) ||
+      updated.user;
+
+    // Determine the sender (planner/vendor)
+    const sender =
+      updated.receiver ||
+      (updated.targetType === "PlannerProfile" ? updated.receiver : null) ||
+      updated.user;
+
+    if (status === "approved" && client?._id && sender?._id) {
+      const senderModel =
+        updated.targetType === "PlannerProfile"
+          ? "PlannerProfile"
+          : updated.targetType === "VendorProfile"
+          ? "VendorProfile"
+          : "User";
+
+      // Create system message
+      const systemMessage = await Message.create({
+        sender: sender._id,
+        senderModel,
+        recipient: client._id,
+        recipientModel: "ClientProfile",
+        text: `Hi ${client.firstName || client.username}, your request has been approved.`,
+      });
+
+      // Emit real-time message via Socket.IO if connected
+      const io = req.app.get("io");
+      const connectedUsers = req.app.get("connectedUsers") || {};
+      const clientSocket = connectedUsers[client._id];
+
+      if (clientSocket) {
+        io.to(clientSocket.socketId).emit("receive_message", {
+          ...systemMessage.toObject(),
+          received: true,
+        });
+      }
+    }
+
+    res.status(200).json({ success: true, consultation: updated });
   } catch (err) {
     console.error("❌ Error updating consultation:", err);
     res.status(500).json({ message: "Error updating consultation" });
   }
 };
+
 
 // ========================================================
 // Delete Consultation
@@ -138,9 +173,8 @@ const updateConsultationStatus = async (req, res) => {
 const deleteConsultation = async (req, res) => {
   try {
     const deleted = await Consultation.findByIdAndDelete(req.params.id);
-    if (!deleted) {
+    if (!deleted)
       return res.status(404).json({ message: "Consultation not found" });
-    }
     res.status(200).json({ message: "Consultation deleted" });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -159,7 +193,6 @@ const getPendingConsultations = async (req, res) => {
       .sort({ createdAt: -1 });
 
     console.log("✅ Fetched all pending consultations:", consultations.length);
-
     res.status(200).json(consultations);
   } catch (err) {
     console.error("❌ Error fetching pending consultations:", err);
@@ -168,7 +201,7 @@ const getPendingConsultations = async (req, res) => {
 };
 
 // ========================================================
-// 📦 EXPORT MODULES AT BOTTOM
+// Export
 // ========================================================
 module.exports = {
   createConsultation,

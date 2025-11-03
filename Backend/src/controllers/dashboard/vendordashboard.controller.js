@@ -2,6 +2,103 @@ const VendorDashboard = require("../../models/dashboard/vendordashboard.model");
 const Notification = require("../../models/notification.model");
 const { getUserProfile } = require("../notification.controller");
 const { updateVendorDashboard } = require("../../helpers/vendor/vendorHelpers");
+const Message = require("../../models/message.model");
+
+// -------------------- GET CONVERSATIONS --------------------
+
+// GET vendor conversations
+const getVendorConversations = async (req, res) => {
+  try {
+    const vendorId = req.user._id;
+
+    // Fetch all messages where the vendor is sender or recipient
+    const messages = await Message.find({
+      $or: [
+        { sender: vendorId },
+        { recipient: vendorId },
+      ],
+    })
+      .sort({ createdAt: -1 })
+      .populate("sender", "username firstName imageCover")
+      .populate("recipient", "username firstName imageCover")
+      .lean();
+
+    // Group messages by conversation partner
+    const conversationsMap = {};
+
+    messages.forEach((msg) => {
+      // Determine the "other" participant
+      const other = msg.sender._id.equals(vendorId) ? msg.recipient : msg.sender;
+      const otherId = other._id.toString();
+
+      // Initialize conversation if not exists
+      if (!conversationsMap[otherId]) {
+        conversationsMap[otherId] = {
+          participant: other,
+          lastMessage: msg,
+          messages: [msg],
+        };
+      } else {
+        // Push to messages and keep lastMessage updated
+        conversationsMap[otherId].messages.push(msg);
+        if (msg.createdAt > conversationsMap[otherId].lastMessage.createdAt) {
+          conversationsMap[otherId].lastMessage = msg;
+        }
+      }
+    });
+
+    // Convert map to array
+    const conversations = Object.values(conversationsMap);
+
+    res.status(200).json({ success: true, conversations });
+  } catch (err) {
+    console.error("❌ Error fetching vendor conversations:", err);
+    res.status(500).json({ message: "Server error fetching conversations" });
+  }
+};
+
+
+// -------------------- SEND MESSAGE --------------------
+const sendVendorMessage = async (req, res) => {
+  try {
+    const vendorId = req.user._id;
+    const { recipientId, text } = req.body;
+
+    if (!recipientId || !text) {
+      return res.status(400).json({ message: "recipientId and text required" });
+    }
+
+    const message = await Message.create({
+      sender: vendorId,
+      senderModel: "VendorProfile",
+      recipient: recipientId,
+      recipientModel: "ClientProfile",
+      text,
+    });
+
+    const populated = await message
+      .populate("sender", "username name imageCover")
+      .populate("recipient", "username name imageCover")
+      .execPopulate();
+
+    // Optionally: emit via Socket.IO if you have real-time chat
+    const io = req.app.get("io");
+    const connectedUsers = req.app.get("connectedUsers") || {};
+    const recipientSocket = connectedUsers[recipientId];
+
+    if (recipientSocket) {
+      io.to(recipientSocket.socketId).emit("receive_message", populated);
+    }
+
+    res.status(201).json(populated);
+  } catch (err) {
+    console.error("❌ Error sending vendor message:", err);
+    res.status(500).json({ message: "Failed to send message" });
+  }
+};
+
+
+
 
 /**
  * @desc Fetch vendor dashboard
@@ -10,65 +107,40 @@ const { updateVendorDashboard } = require("../../helpers/vendor/vendorHelpers");
  */
 const getVendorDashboard = async (req, res) => {
   try {
-    const vendorId = req.user.id; // assuming authMiddleware attaches user
+    const vendorId = req.user._id;
 
-    console.log("✅ getVendorDashboard triggered for:", vendorId);
+    // Fetch vendor profile
+    const vendorProfile = await VendorProfile.findOne({ user: vendorId });
 
-    // 🧩 Try to find existing dashboard
-    let dashboard = await VendorDashboard.findOne({
-      vendor: vendorId,
-    }).populate("orders.client orders.event ratings.client");
+    // Fetch pending consultations for this vendor
+    const pendingConsultations = await Consultation.find({
+      status: "pending",
+      targetUser: vendorId,
+      targetType: "VendorProfile",
+    })
+      .populate("user", "username name imageCover")
+      .sort({ createdAt: -1 });
 
-    // 🆕 If none found, create a default one
-    if (!dashboard) {
-      console.log("🆕 No vendor dashboard found — creating new one...");
-      dashboard = await VendorDashboard.create({
-        vendor: vendorId,
-        orders: [],
-        notifications: [],
-        ratings: [],
-        metrics: {
-          totalOrders: 0,
-          completedOrders: 0,
-          pendingOrders: 0,
-          revenue: 0,
-        },
-        averageRating: 0,
-      });
-    }
+    // Fetch vendor messages/conversations
+    const messages = await Message.find({
+      $or: [{ sender: vendorId }, { recipient: vendorId }],
+    })
+      .populate("sender", "username name imageCover")
+      .populate("recipient", "username name imageCover")
+      .sort({ createdAt: -1 });
 
-    // Migrate any embedded notifications to the main Notification collection
-    if (dashboard.notifications && dashboard.notifications.length > 0) {
-      const newNotifications = dashboard.notifications.map((n) => ({
-        user: vendorId,
-        userModel: "VendorProfile",
-        message: n.message,
-        type: n.type,
-        createdAt: n.date,
-      }));
-      await Notification.insertMany(newNotifications);
-
-      // Clear the old notifications
-      dashboard.notifications = [];
-      await dashboard.save();
-    }
-
-    // ♻️ Recalculate metrics (optional but useful)
-    await updateVendorDashboard(dashboard);
-
-    // ✅ Return dashboard data
     res.status(200).json({
       success: true,
-      data: dashboard,
+      vendorProfile,
+      pendingConsultations,
+      messages,
     });
-  } catch (error) {
-    console.error("❌ Error fetching vendor dashboard:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error while fetching dashboard",
-    });
+  } catch (err) {
+    console.error("❌ Error fetching vendor dashboard:", err);
+    res.status(500).json({ message: "Server error fetching dashboard" });
   }
 };
+
 
 /**
  * @desc Update order status (pending → in-progress → completed, etc.)
@@ -251,4 +323,6 @@ module.exports = {
   addPayment,
   addNotification,
   addRating,
+  getVendorConversations, // ✅ added
+  sendVendorMessage,      // ✅ added
 };

@@ -9,6 +9,8 @@ const {
   addPayment,
   addNotification,
   addRating,
+  getVendorConversations, // ✅ added
+  sendVendorMessage, 
 } = require("../../controllers/dashboard/vendordashboard.controller");
 
 // ✅ middleware (if you use one)
@@ -34,5 +36,12 @@ router.post("/notifications",  addNotification);
 
 // Add rating
 router.post("/ratings", addRating);
+
+// Get all conversations for the vendor
+router.get("/conversations", getVendorConversations);
+
+// Send a new message
+router.post("/messages", sendVendorMessage);
+
 
 module.exports = router;

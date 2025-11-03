@@ -2,31 +2,23 @@ const PlannerDashboard = require("../../models/dashboard/plannerdashboard.model"
 const VendorDashboard = require("../../models/dashboard/vendordashboard.model");
 const Notification = require("../../models/notification.model");
 const InitialConsultation = require("../../models/initialConsultation.model");
-const VendorProfile = require("../../models/vendorProfile.model"); // Import VendorProfile model
+const VendorProfile = require("../../models/vendorProfile.model");
+const Message = require("../../models/message.model");
 const {
   updateDashboard,
   addPayment,
 } = require("../../helpers/planner/plannerHelpers");
 const { getUserProfile } = require("../notification.controller");
 
-// @desc Fetch planner dashboard
-// @route GET /api/planner/dashboard
-// @access Planner
-
+// -------------------- DASHBOARD --------------------
 const getDashboard = async (req, res) => {
   try {
-    console.log("✅ getDashboard triggered for:", req.user.id);
-
     const plannerId = req.user.id;
 
-    // 🧩 Find existing dashboard
-    let dashboard = await PlannerDashboard.findOne({
-      planner: plannerId,
-    }).populate("events.client events.vendors upcomingDeadlines.event");
+    let dashboard = await PlannerDashboard.findOne({ planner: plannerId })
+      .populate("events.client events.vendors upcomingDeadlines.event");
 
-    // 🆕 Auto-create dashboard if it doesn’t exist
     if (!dashboard) {
-      console.log("🆕 No dashboard found, creating new one...");
       dashboard = await PlannerDashboard.create({
         planner: plannerId,
         events: [],
@@ -40,21 +32,16 @@ const getDashboard = async (req, res) => {
       });
     }
 
-    // ♻️ Recalculate metrics (optional)
     await updateDashboard(dashboard);
 
-    //  Fetch pending requests separately and attach them
-    // The frontend expects an array of request objects, not just a count.
     const pendingRequests = await InitialConsultation.find({
-      targetUser: plannerId, // Find consultations TARGETED AT the planner
+      targetUser: plannerId,
       status: "pending",
     }).populate("user", "username imageCover");
 
-    // Convert to a plain object to attach the new property
     const dashboardObject = dashboard.toObject();
     dashboardObject.pendingRequests = pendingRequests;
 
-    // ✅ Return dashboard
     res.json({ success: true, data: dashboardObject });
   } catch (error) {
     console.error("❌ getDashboard error:", error);
@@ -62,9 +49,7 @@ const getDashboard = async (req, res) => {
   }
 };
 
-// @desc Update event status and recompute dashboard metrics
-// @route PATCH /api/planner/dashboard/events/:eventId
-// @access Planner
+// -------------------- EVENT --------------------
 const updateEventStatus = async (req, res) => {
   try {
     const plannerId = req.user.id;
@@ -72,23 +57,15 @@ const updateEventStatus = async (req, res) => {
     const { status } = req.body;
 
     const dashboard = await PlannerDashboard.findOne({ planner: plannerId });
-    if (!dashboard)
-      return res
-        .status(404)
-        .json({ success: false, message: "Dashboard not found" });
+    if (!dashboard) return res.status(404).json({ success: false, message: "Dashboard not found" });
 
     const event = dashboard.events.id(eventId);
-    if (!event)
-      return res
-        .status(404)
-        .json({ success: false, message: "Event not found" });
+    if (!event) return res.status(404).json({ success: false, message: "Event not found" });
 
     event.status = status;
     event.updatedAt = Date.now();
 
-    // Recalculate all dashboard metrics
     updateDashboard(dashboard);
-
     await dashboard.save();
 
     res.json({ success: true, data: dashboard });
@@ -98,211 +75,191 @@ const updateEventStatus = async (req, res) => {
   }
 };
 
-// @desc Add a payment to an event
-// @route POST /api/planner/dashboard/events/:eventId/payments
-// @access Planner
+// -------------------- PAYMENTS --------------------
 const addPaymentController = async (req, res) => {
   try {
-    const plannerId = req.useer.id;
+    const plannerId = req.user.id;
     const { eventId } = req.params;
     const { amount, status, method } = req.body;
 
     const dashboard = await PlannerDashboard.findOne({ planner: plannerId });
-    if (!dashboard)
-      return res
-        .status(404)
-        .json({ success: false, message: "Dashboard not found" });
+    if (!dashboard) return res.status(404).json({ success: false, message: "Dashboard not found" });
 
-    // Use helper to add payment and recalc metrics
     addPayment(dashboard, eventId, { amount, status, method });
 
     await dashboard.save();
-
     res.json({ success: true, data: dashboard });
   } catch (error) {
     console.error(error);
-    res
-      .status(500)
-      .json({ success: false, message: error.message || "Server error" });
+    res.status(500).json({ success: false, message: error.message || "Server error" });
   }
 };
 
-// @desc Add a notification
-// @route POST /api/planner/dashboard/notifications
-// @access Planner
+// -------------------- NOTIFICATIONS --------------------
 const addNotification = async (req, res) => {
   try {
     const { message, type } = req.body;
-
-    // Get the correct profile ID for the logged-in user
     const { profileId, modelName } = await getUserProfile(req.user);
 
-    // Create a notification in the central collection
     const newNotification = await Notification.create({
       user: profileId,
       userModel: modelName,
       message,
       type: type || "general",
-      // sender can be added here if available from req.body
     });
 
-    res.status(201).json({
-      success: true,
-      message: "Notification created successfully",
-      data: newNotification,
-    });
+    res.status(201).json({ success: true, message: "Notification created successfully", data: newNotification });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
+// -------------------- RATINGS --------------------
 const addRating = async (req, res) => {
   try {
     const plannerId = req.user.id;
     const { clientId, score, comment } = req.body;
 
-    // 🧩 Validate input
-    if (!clientId || score == null) {
-      return res.status(400).json({
-        success: false,
-        message: "Client ID and rating score are required.",
-      });
-    }
+    if (!clientId || score == null) return res.status(400).json({ success: false, message: "Client ID and rating score are required." });
 
-    // 🗂️ Fetch planner dashboard
     const dashboard = await PlannerDashboard.findOne({ planner: plannerId });
-    if (!dashboard) {
-      return res.status(404).json({
-        success: false,
-        message: "Dashboard not found",
-      });
-    }
+    if (!dashboard) return res.status(404).json({ success: false, message: "Dashboard not found" });
 
-    // 🧮 Check if client has already rated
-    const existingRating = dashboard.ratings.find(
-      (r) => r.client.toString() === clientId
-    );
-
+    const existingRating = dashboard.ratings.find((r) => r.client.toString() === clientId);
     if (existingRating) {
       existingRating.score = Number(score);
       existingRating.comment = comment;
       existingRating.date = new Date();
     } else {
-      dashboard.ratings.push({
-        client: clientId,
-        score: Number(score),
-        comment,
-      });
+      dashboard.ratings.push({ client: clientId, score: Number(score), comment });
     }
 
-    // 🔢 Recalculate average rating
     const totalScore = dashboard.ratings.reduce((sum, r) => sum + r.score, 0);
-    dashboard.averageRating =
-      dashboard.ratings.length > 0 ? totalScore / dashboard.ratings.length : 0;
+    dashboard.averageRating = dashboard.ratings.length > 0 ? totalScore / dashboard.ratings.length : 0;
 
     await dashboard.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Rating added successfully",
-      data: dashboard,
-    });
+    res.status(200).json({ success: true, message: "Rating added successfully", data: dashboard });
   } catch (error) {
     console.error("❌ Error adding rating:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error while adding rating",
-    });
+    res.status(500).json({ success: false, message: "Server error while adding rating" });
   }
 };
 
-// ✅ Add vendor to an event
+// -------------------- RECRUIT VENDOR --------------------
 const recruitVendor = async (req, res) => {
   try {
     const { eventId, vendorId, role } = req.body;
     const plannerId = req.user.id;
 
-    // 🔹 Find planner dashboard
     const dashboard = await PlannerDashboard.findOne({ planner: plannerId });
-    if (!dashboard)
-      return res
-        .status(404)
-        .json({ success: false, message: "Planner dashboard not found" });
+    if (!dashboard) return res.status(404).json({ success: false, message: "Planner dashboard not found" });
 
-    // 🔹 Find target event
     const event = dashboard.events.id(eventId);
-    if (!event)
-      return res
-        .status(404)
-        .json({ success: false, message: "Event not found" });
+    if (!event) return res.status(404).json({ success: false, message: "Event not found" });
 
-    // 🔹 Prevent duplicate vendor assignment
-    const alreadyAdded = event.vendors.some(
-      (v) => v.vendor.toString() === vendorId
-    );
-    if (alreadyAdded)
-      return res
-        .status(400)
-        .json({ success: false, message: "Vendor already recruited" });
+    const alreadyAdded = event.vendors.some((v) => v.vendor.toString() === vendorId);
+    if (alreadyAdded) return res.status(400).json({ success: false, message: "Vendor already recruited" });
 
-    // 🔹 Add vendor to planner's event
     event.vendors.push({ vendor: vendorId, role });
     await dashboard.save();
 
-    // 🔹 Update vendor's dashboard to reflect assigned event
     let vendorDashboard = await VendorDashboard.findOne({ vendor: vendorId });
-
-    // Create vendor dashboard if not found (failsafe)
-    if (!vendorDashboard) {
-      vendorDashboard = await VendorDashboard.create({
-        vendor: vendorId,
-        assignedEvents: [event._id],
-      });
-    } else {
-      // Prevent duplicates
-      if (!vendorDashboard.assignedEvents.includes(event._id)) {
-        vendorDashboard.assignedEvents.push(event._id);
-        await vendorDashboard.save();
-      }
+    if (!vendorDashboard) vendorDashboard = await VendorDashboard.create({ vendor: vendorId, assignedEvents: [event._id] });
+    else if (!vendorDashboard.assignedEvents.includes(event._id)) {
+      vendorDashboard.assignedEvents.push(event._id);
+      await vendorDashboard.save();
     }
 
-    // Find the VendorProfile ID to use for the notification
-    const vendorProfile = await VendorProfile.findOne({ user: vendorId })
-      .select("_id")
-      .lean();
-    if (!vendorProfile) {
-      // This is a safeguard. If a vendor exists, they should have a profile.
-      console.warn(`Could not find VendorProfile for user ID: ${vendorId}`);
-      // Fallback to using the user ID if profile is missing
-      vendorProfile = { _id: vendorId };
-    }
+    const vendorProfile = await VendorProfile.findOne({ user: vendorId }).select("_id").lean() || { _id: vendorId };
 
-    // ✅ Send notification to vendor using the central Notification model
     await Notification.create({
-      user: vendorProfile._id, // Use the VendorProfile ID as the recipient
+      user: vendorProfile._id,
       userModel: "VendorProfile",
-      sender: plannerId, // The sender is the planner
-      senderModel: "PlannerProfile", // Assuming the planner has a profile
+      sender: plannerId,
+      senderModel: "PlannerProfile",
       message: `You’ve been assigned to the event "${event.name}".`,
-      type: "booking", // Or 'assignment', 'info', etc.
+      type: "booking",
     });
 
     res.status(200).json({
       success: true,
-      message:
-        "Vendor successfully tied to event and synced to vendor dashboard",
-      data: {
-        event: event,
-        vendorDashboard: vendorDashboard.assignedEvents,
-      },
+      message: "Vendor successfully tied to event and synced to vendor dashboard",
+      data: { event: event, vendorDashboard: vendorDashboard.assignedEvents },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ✅ Default export object
+// -------------------- MESSAGING --------------------
+
+// Get all planner conversations
+const getPlannerConversations = async (req, res) => {
+  try {
+    const plannerId = req.user.id;
+
+    const messages = await Message.find({
+      $or: [{ sender: plannerId }, { recipient: plannerId }],
+    })
+      .sort({ createdAt: -1 })
+      .populate("sender", "username firstName imageCover")
+      .populate("recipient", "username firstName imageCover")
+      .lean();
+
+    const conversationsMap = {};
+    messages.forEach((msg) => {
+      const other = msg.sender._id.toString() === plannerId ? msg.recipient : msg.sender;
+      const otherId = other._id.toString();
+
+      if (!conversationsMap[otherId]) {
+        conversationsMap[otherId] = { participant: other, lastMessage: msg, messages: [msg] };
+      } else {
+        conversationsMap[otherId].messages.push(msg);
+        if (msg.createdAt > conversationsMap[otherId].lastMessage.createdAt) conversationsMap[otherId].lastMessage = msg;
+      }
+    });
+
+    res.status(200).json({ success: true, conversations: Object.values(conversationsMap) });
+  } catch (err) {
+    console.error("❌ Error fetching planner conversations:", err);
+    res.status(500).json({ message: "Server error fetching conversations" });
+  }
+};
+
+// Send a message as planner
+const sendPlannerMessage = async (req, res) => {
+  try {
+    const plannerId = req.user.id;
+    const { recipientId, text } = req.body;
+
+    if (!recipientId || !text) return res.status(400).json({ message: "recipientId and text required" });
+
+    const message = await Message.create({
+      sender: plannerId,
+      senderModel: "PlannerProfile",
+      recipient: recipientId,
+      recipientModel: "ClientProfile",
+      text,
+    });
+
+    const populated = await message
+      .populate("sender", "username name imageCover")
+      .populate("recipient", "username name imageCover")
+      .execPopulate();
+
+    const io = req.app.get("io");
+    const connectedUsers = req.app.get("connectedUsers") || {};
+    const recipientSocket = connectedUsers[recipientId];
+    if (recipientSocket) io.to(recipientSocket.socketId).emit("receive_message", populated);
+
+    res.status(201).json(populated);
+  } catch (err) {
+    console.error("❌ Error sending planner message:", err);
+    res.status(500).json({ message: "Failed to send message" });
+  }
+};
+
 module.exports = {
   getDashboard,
   updateEventStatus,
@@ -310,4 +267,6 @@ module.exports = {
   addNotification,
   addRating,
   recruitVendor,
-};
+  getPlannerConversations,
+  sendPlannerMessage,
+}
