@@ -13,10 +13,8 @@ function MessagesPanel() {
   useEffect(() => {
     const fetchConversations = async () => {
       try {
-        const res = await api.get("/planner-dashboard/messages");
-        if (res.data.success) {
-          setConversations(res.data.data || []);
-        }
+        const res = await api.get("/consultation/mine"); // Use the correct endpoint
+        setConversations(res.data || []);
       } catch (error) {
         console.error("❌ Error fetching conversations:", error);
       } finally {

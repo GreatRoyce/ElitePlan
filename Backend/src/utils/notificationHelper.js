@@ -1,48 +1,29 @@
-const Consultation = require("../models/initialConsultation.model");
-const { createNotification } = require("../utils/notificationHelper");
+// utils/notificationHelper.js
+const Notification = require("../models/notification.model");
 
-const createConsultation = async (req, res) => {
+const createNotification = async (
+  receiverId,
+  receiverModel,
+  senderProfile,
+  message,
+  type = "general",
+  imageCover = null // <-- optional
+) => {
   try {
-    const consultation = await Consultation.create({
-      ...req.body,
-      user: req.user._id, // requester
-      status: "pending",
+    await Notification.create({
+      user: receiverId, // recipient ID
+      userModel: receiverModel,
+      sender: senderProfile._id,
+      senderModel: senderProfile.profileType,
+      message,
+      type,
+      imageCover: imageCover || senderProfile.avatarUrl || null, // use provided image or sender's avatar
     });
 
-    // Prepare sender profile
-    const senderProfile = req.profile
-      ? {
-          _id: req.profile._id,
-          fullName: req.profile.fullName,
-          businessName: req.profile.businessName,
-          imageCover: req.profile.imageCover,
-          profileType: req.profileType,
-        }
-      : {
-          _id: req.user._id,
-          fullName: req.user.fullName,
-          businessName: "",
-          imageCover: "",
-          profileType: "User",
-        };
-
-    // Recipient
-    const recipientId = consultation.targetUser; // ObjectId of Planner/Vendor
-    const recipientModel = consultation.targetType; // "PlannerProfile" or "VendorProfile"
-
-    await createNotification(
-      recipientId,
-      recipientModel,
-      senderProfile,
-      `You have a new consultation request from ${senderProfile.fullName}.`,
-      "consultation"
-    );
-
-    res.status(201).json({ success: true, consultation });
+    console.log("✅ Notification saved");
   } catch (err) {
-    console.error("❌ Error creating consultation:", err);
-    res.status(500).json({ success: false, message: err.message });
+    console.error("❌ Error saving notification:", err.message);
   }
 };
 
-module.exports = { createConsultation };
+module.exports = { createNotification };

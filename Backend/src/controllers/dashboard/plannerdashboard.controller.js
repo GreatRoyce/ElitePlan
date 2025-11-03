@@ -1,10 +1,13 @@
 const PlannerDashboard = require("../../models/dashboard/plannerdashboard.model");
 const VendorDashboard = require("../../models/dashboard/vendordashboard.model");
+const Notification = require("../../models/notification.model");
 const InitialConsultation = require("../../models/initialConsultation.model");
+const VendorProfile = require("../../models/vendorProfile.model"); // Import VendorProfile model
 const {
   updateDashboard,
   addPayment,
-} = require("../../helpers/planner/plannerhelpers");
+} = require("../../helpers/planner/plannerHelpers");
+const { getUserProfile } = require("../notification.controller");
 
 // @desc Fetch planner dashboard
 // @route GET /api/planner/dashboard
@@ -43,7 +46,7 @@ const getDashboard = async (req, res) => {
     //  Fetch pending requests separately and attach them
     // The frontend expects an array of request objects, not just a count.
     const pendingRequests = await InitialConsultation.find({
-      user: plannerId,
+      targetUser: plannerId, // Find consultations TARGETED AT the planner
       status: "pending",
     }).populate("user", "username imageCover");
 
@@ -129,23 +132,25 @@ const addPaymentController = async (req, res) => {
 // @access Planner
 const addNotification = async (req, res) => {
   try {
-    const plannerId = req.user.id;
     const { message, type } = req.body;
 
-    const dashboard = await PlannerDashboard.findOne({ planner: plannerId });
-    if (!dashboard)
-      return res
-        .status(404)
-        .json({ success: false, message: "Dashboard not found" });
+    // Get the correct profile ID for the logged-in user
+    const { profileId, modelName } = await getUserProfile(req.user);
 
-    dashboard.notifications.push({ message, type });
+    // Create a notification in the central collection
+    const newNotification = await Notification.create({
+      user: profileId,
+      userModel: modelName,
+      message,
+      type: type || "general",
+      // sender can be added here if available from req.body
+    });
 
-    // Optionally recalc metrics if notifications affect deadlines
-    updateDashboard(dashboard);
-
-    await dashboard.save();
-
-    res.json({ success: true, data: dashboard.notifications });
+    res.status(201).json({
+      success: true,
+      message: "Notification created successfully",
+      data: newNotification,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Server error" });
@@ -262,12 +267,26 @@ const recruitVendor = async (req, res) => {
       }
     }
 
-    // ✅ Optional: send notification to vendor
-    vendorDashboard.notifications.push({
-      message: `You’ve been assigned to event "${event.name}" by a planner.`,
-      type: "info",
+    // Find the VendorProfile ID to use for the notification
+    const vendorProfile = await VendorProfile.findOne({ user: vendorId })
+      .select("_id")
+      .lean();
+    if (!vendorProfile) {
+      // This is a safeguard. If a vendor exists, they should have a profile.
+      console.warn(`Could not find VendorProfile for user ID: ${vendorId}`);
+      // Fallback to using the user ID if profile is missing
+      vendorProfile = { _id: vendorId };
+    }
+
+    // ✅ Send notification to vendor using the central Notification model
+    await Notification.create({
+      user: vendorProfile._id, // Use the VendorProfile ID as the recipient
+      userModel: "VendorProfile",
+      sender: plannerId, // The sender is the planner
+      senderModel: "PlannerProfile", // Assuming the planner has a profile
+      message: `You’ve been assigned to the event "${event.name}".`,
+      type: "booking", // Or 'assignment', 'info', etc.
     });
-    await vendorDashboard.save();
 
     res.status(200).json({
       success: true,

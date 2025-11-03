@@ -1,3 +1,38 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+.mover {
+  overflow: hidden;
+  border-right: 2px transparent #4B000F;
+  white-space: nowrap;
+  margin: 0 auto;
+  letter-spacing: 0.05em;
+  animation: 
+    typing 16s infinite,
+    blink-caret 1.6s infinite;
+}
+
+@keyframes typing {
+  0% { 
+    width: 0; 
+  }
+  30% { 
+    width: 90%; 
+  }
+  50% { 
+    width: 90%; 
+  }
+  80% { 
+    width: 0; 
+  }
+  100% { 
+    width: 0; 
+  }
+}
+
+@keyframes blink-caret {
+  from, to { border-color: transparent }
+  50% { border-color: white }
+}

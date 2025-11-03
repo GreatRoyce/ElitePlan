@@ -43,7 +43,7 @@ function Login({ onLogin }) {
       localStorage.setItem("user", JSON.stringify(user));
       api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
-      if (onLogin) onLogin(user);
+      if (onLogin) onLogin(user, token);
       navigate("/lounge");
     } catch (err) {
       console.error("❌ Login failed:", err);
@@ -73,7 +73,7 @@ function Login({ onLogin }) {
       <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-brand-royal/20 blur-[160px] rounded-full" />
 
       {/* LOGIN CARD */}
-      <div className="relative z-10 w-[90%] lg:w-[85%] max-w-5xl grid lg:grid-cols-[1.1fr_1.4fr] border border-white/10 bg-white/10 backdrop-blur-2xl rounded-2xl shadow-[0_0_60px_-10px_rgba(0,0,0,0.6)] overflow-hidden">
+      <div className="relative z-10 w-[90%] lg:w-[85%] max-w-5xl grid lg:grid-cols-[1.1fr_1.4fr] border border-white/10 bg-white/10 backdrop-blur-2xl rounded-2xl mt-10 shadow-[0_0_60px_-10px_rgba(0,0,0,0.6)] overflow-hidden">
         {/* LEFT PANEL */}
         <div className="flex flex-col justify-center px-6 lg:px-10 py-8">
           <h2 className="text-2xl lg:text-3xl font-extrabold bg-gradient-to-r from-brand-emerald to-brand-ivory bg-clip-text text-transparent mb-2">

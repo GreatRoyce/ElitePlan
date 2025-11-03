@@ -12,7 +12,7 @@ import MessagesSection from "./ClientPieces/MessagesSection";
 import ClientPresence from "../Presence/clientPresence";
 
 // Icons
-import { Compass, Book, MessageCircle, User, CalendarDays } from "lucide-react";
+import { Compass, Book, MessageCircle, User, CalendarDays, LogOut } from "lucide-react";
 
 export default function ClientLounge({
   user,
@@ -29,6 +29,8 @@ export default function ClientLounge({
   const [viewMode, setViewMode] = useState("grid");
   const [bookings, setBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const navigate = useNavigate();
 
@@ -39,6 +41,18 @@ export default function ClientLounge({
       ? `${baseImageUrl}/${item.profileImage.replace(/\\/g, "/")}`
       : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face&auto=format";
 
+    // Handle gallery images - convert to full URLs
+    const galleryImages = item.gallery?.map(galleryItem => {
+      if (typeof galleryItem === 'string') {
+        return galleryItem.startsWith('http') 
+          ? galleryItem 
+          : `${baseImageUrl}/${galleryItem.replace(/\\/g, "/")}`;
+      }
+      return galleryItem;
+    }) || [];
+
+    console.log(`📸 ${type} Gallery for ${item.businessName || item.companyName}:`, galleryImages);
+
     const base = {
       id: item._id,
       email: item.email,
@@ -46,7 +60,9 @@ export default function ClientLounge({
       location: `${item.city || item.state}, ${item.country || "Nigeria"}`,
       rating: item.rating || (Math.random() * 2 + 3).toFixed(1),
       verified: item.verified,
+      gallery: galleryImages,
       type,
+      raw: item, // Keep raw data for modal
     };
 
     return type === "Vendor"
@@ -57,6 +73,10 @@ export default function ClientLounge({
           description: item.tagline,
           website: item.website,
           jobsCompleted: item.jobsCompleted || 0,
+          yearsExperience: item.yearsExperience,
+          specialization: item.specialization,
+          shortBio: item.shortBio,
+          phone: item.phone,
         }
       : {
           ...base,
@@ -65,6 +85,9 @@ export default function ClientLounge({
           description: item.tagline,
           eventTypes: item.eventTypesHandled,
           languages: item.languagesSpoken,
+          yearsExperience: item.yearsExperience,
+          shortBio: item.shortBio,
+          phone: item.phone,
         };
   }, []);
 
@@ -78,6 +101,9 @@ export default function ClientLounge({
           api.get("/planner-profile/all"),
         ]);
 
+        console.log("📸 VENDORS API RESPONSE:", vendors.data?.data);
+        console.log("📸 PLANNERS API RESPONSE:", planners.data?.data);
+
         const vendorData = vendors.data?.data?.map((v) =>
           mapProfile(v, "Vendor")
         );
@@ -85,7 +111,9 @@ export default function ClientLounge({
           mapProfile(p, "Planner")
         );
 
-        setProfiles([...(vendorData || []), ...(plannerData || [])]);
+        const allProfiles = [...(vendorData || []), ...(plannerData || [])];
+        console.log("🎯 ALL PROFILES WITH GALLERY:", allProfiles);
+        setProfiles(allProfiles);
       } catch (err) {
         console.error("❌ Error fetching profiles:", err);
       } finally {
@@ -154,8 +182,8 @@ export default function ClientLounge({
       const matchesSearch =
         profile.name?.toLowerCase().includes(searchLower) ||
         profile.category?.toLowerCase().includes(searchLower) ||
-        profile.location?.toLowerCase().includes(searchLower) ||
-        profile.description?.toLowerCase().includes(searchLower);
+        profile.description?.toLowerCase().includes(searchLower) ||
+        profile.location?.toLowerCase().includes(searchLower);
 
       const matchesCategory =
         selectedCategory === "All" ||
@@ -216,24 +244,43 @@ export default function ClientLounge({
     }
   };
 
-  // 🧭 Sidebar Navigation
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await api.post("/auth/logout");
+      // Clear user context and redirect
+      navigate("/");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  // 🧭 Sidebar Navigation with counts
   const navItems = [
     {
       id: "overview",
-      icon: <Compass size={20} />,
+      icon: <Compass className="w-5 h-5" />,
       label: "Overview",
-      count: profiles.length,
     },
     {
       id: "saved",
-      icon: <Book size={20} />,
+      icon: <Book className="w-5 h-5" />,
       label: "Saved",
-      count: bookmarkedProfiles.size,
     },
-    { id: "bookings", icon: <CalendarDays size={20} />, label: "Bookings" },
-    { id: "messages", icon: <MessageCircle size={20} />, label: "Messages" },
-    { id: "profile", icon: <User size={20} />, label: "My Profile" },
+    { id: "bookings", icon: <CalendarDays className="w-5 h-5" />, label: "Bookings" },
+    { id: "messages", icon: <MessageCircle className="w-5 h-5" />, label: "Messages" },
+    { id: "profile", icon: <User className="w-5 h-5" />, label: "My Profile" },
   ];
+
+  // Counts for sidebar badges
+  const sidebarCounts = useMemo(() => ({
+    overview: profiles.length,
+    saved: bookmarkedProfiles.size,
+    messages: 0, // You can add message count logic here
+  }), [profiles.length, bookmarkedProfiles.size]);
 
   // 🎨 Dynamic content
   const renderContent = () => {
@@ -305,26 +352,37 @@ export default function ClientLounge({
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-50 to-brand-royal-50/30">
+      {/* Sidebar */}
       <Sidebar
-        user={user}
         activeSection={activeSection}
         setActiveSection={setActiveSection}
         navItems={navItems}
+        handleLogout={handleLogout}
+        isLoggingOut={isLoggingOut}
+        counts={sidebarCounts}
+        setIsMobileOpen={setIsMobileOpen}
+        isMobileOpen={isMobileOpen}
       />
 
-      <main className="flex-1 flex flex-col min-w-0">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 lg:ml-0"> {/* Remove fixed margin */}
+        {/* Topbar */}
         <Topbar
           user={user}
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
           viewMode={viewMode}
           setViewMode={setViewMode}
+          onMenuToggle={() => setIsMobileOpen(!isMobileOpen)}
         />
 
-        <section className="flex-1 p-8 overflow-y-auto">
-          <div className="max-w-7xl mx-auto">{renderContent()}</div>
-        </section>
-      </main>
+        {/* Scrollable Main Content */}
+        <main className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-7xl mx-auto w-full">
+            {renderContent()}
+          </div>
+        </main>
+      </div>
 
       <ProfileModal
         selectedProfile={selectedProfile}
@@ -355,7 +413,7 @@ function BookingsSection({ bookings, bookingsLoading }) {
           No bookings yet
         </h2>
         <p className="text-gray-500">
-          Once you make event bookings, they’ll appear here.
+          Once you make event bookings, they'll appear here.
         </p>
       </div>
     );

@@ -60,7 +60,7 @@ export default function HowItWorks() {
   return (
     <div className="min-h-screen bg-brand-ivory flex flex-col justify-between">
       {/* Section */}
-      <section className="py-16" ref={ref}>
+      <section className="py-32" ref={ref}>
         <div className="max-w-6xl mx-auto px-6 text-center">
           <motion.h2
             variants={fadeUp}

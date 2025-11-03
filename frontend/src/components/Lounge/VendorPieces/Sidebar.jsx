@@ -1,4 +1,3 @@
-// Sidebar.jsx
 import React from "react";
 import {
   LayoutDashboard,
@@ -8,33 +7,49 @@ import {
   LogOut,
   X,
   Menu,
+  Bell,
 } from "lucide-react";
 
 export default function Sidebar({
   activeSection,
   setActiveSection,
   handleLogout,
-  isLoggingOut = false,
+  counts,
+  isLoggingOut,
   isMobileOpen,
   setIsMobileOpen,
 }) {
+  // ✅ Safety check — prevents "setIsMobileOpen is not a function" crash
+  const safeSetIsMobileOpen =
+    typeof setIsMobileOpen === "function" ? setIsMobileOpen : () => {};
+
   const menuItems = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
-    { id: "pending", label: "Pending Requests", icon: Clock },
-    { id: "messages", label: "Messages", icon: MessageSquare },
+    {
+      id: "pending",
+      label: "Pending Requests",
+      icon: Clock,
+      count: counts?.requests || 0,
+    },
+    {
+      id: "messages",
+      label: "Messages",
+      icon: MessageSquare,
+      count: counts?.messages || 0,
+    },
     { id: "profile", label: "My Profile", icon: User },
   ];
 
   const handleMenuItemClick = (itemId) => {
     setActiveSection(itemId);
-    setIsMobileOpen(false);
+    safeSetIsMobileOpen(false);
   };
 
   return (
     <>
       {/* Mobile Menu Toggle */}
       <button
-        onClick={() => setIsMobileOpen(!isMobileOpen)}
+        onClick={() => safeSetIsMobileOpen(!isMobileOpen)}
         className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-brand.ivory rounded-lg shadow-md border border-brand.charcoal hover:shadow-lg transition-all duration-200"
         aria-label="Toggle menu"
       >
@@ -49,7 +64,7 @@ export default function Sidebar({
       {isMobileOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40 backdrop-blur-sm transition-opacity duration-300"
-          onClick={() => setIsMobileOpen(false)}
+          onClick={() => safeSetIsMobileOpen(false)}
           aria-hidden="true"
         />
       )}
@@ -103,17 +118,44 @@ export default function Sidebar({
                       }`}
                     />
                     <span className="font-medium text-sm">{item.label}</span>
+                    {item.count > 0 && (
+                      <span className="ml-auto text-xs font-bold bg-red-500 text-white rounded-full px-2 py-0.5">
+                        {item.count}
+                      </span>
+                    )}
                   </button>
                 </li>
               );
             })}
           </ul>
+          <button
+            onClick={() => handleMenuItemClick("notifications")}
+            className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all duration-200 group
+            ${
+              activeSection === "notifications"
+                ? "bg-gradient-to-r from-brand.navy to-brand.gold text-brand.ivory shadow-lg"
+                : "text-brand.charcoal hover:bg-brand.ivory/20 hover:text-brand.navy hover:shadow-md"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Bell className="w-5 h-5 transition-transform group-hover:scale-105" />
+              <span className="font-medium text-sm">Notifications</span>
+            </div>
+            {counts?.notifications > 0 && (
+              <span className="text-xs font-bold rounded-full px-2 py-0.5 bg-red-500 text-white">
+                {counts.notifications}
+              </span>
+            )}
+          </button>
         </nav>
 
-        {/* Footer - Logout */}
-        <div className="p-4 border-t border-brand.charcoal bg-brand.ivory/50">
+        {/* Footer - Notifications + Logout */}
+        <div className="p-4 border-t border-brand.charcoal bg-brand.ivory/50 flex flex-col gap-2">
+          {/* Notifications */}
+
+          {/* Logout */}
           <button
-            onClick={() => handleLogout()}
+            onClick={handleLogout}
             disabled={isLoggingOut}
             className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group hover:shadow-md ${
               isLoggingOut

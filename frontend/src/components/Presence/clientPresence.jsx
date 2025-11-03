@@ -10,8 +10,10 @@ import {
   ZoomIn,
 } from "lucide-react";
 import api from "../../utils/axios";
+import { useAuth } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
-function ClientPresence({ user, onClose }) {
+function ClientPresence({ user, onClose, onProfileSaved }) {
   const [formData, setFormData] = useState({
     fullName: "",
     phone: "",
@@ -28,6 +30,29 @@ function ClientPresence({ user, onClose }) {
   const [hasChanges, setHasChanges] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    } finally {
+      logout();
+      navigate("/");
+    }
+  };
+
+  const handleLogoutWithDelay = async () => {
+    setIsLoggingOut(true);
+    setTimeout(async () => {
+      await handleLogout();
+      setIsLoggingOut(false);
+    }, 3000); // 3-second delay as requested
+  };
 
   // Fetch profile on mount
   useEffect(() => {
@@ -163,6 +188,7 @@ function ClientPresence({ user, onClose }) {
         setFormData(updatedData);
         setOriginalData(updatedData);
         setEditMode(false);
+        onProfileSaved?.(); // ✅ Notify the parent component to refresh its data
       }
     } catch (err) {
       console.error("Error saving profile:", err);

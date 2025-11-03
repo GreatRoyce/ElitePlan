@@ -1,5 +1,7 @@
 import React from "react";
 import { Bookmark } from "lucide-react";
+import squeeze from "../../../assets/squeeze.png";
+
 
 export default function ProfileCard({
   profile,
@@ -12,9 +14,9 @@ export default function ProfileCard({
   const isBookmarked = bookmarkedProfiles.has(profile.id);
 
   return (
-    <div
+    <div style={{backgroundImage: `url(${squeeze})`}}
       onClick={() => setSelectedProfile(profile)} // ✅ Opens modal with details
-      className={`group relative cursor-pointer rounded-2xl shadow-sm hover:shadow-md bg-white border border-gray-100 transition-all duration-300 overflow-hidden ${
+      className={`group relative cursor-pointer rounded-2xl shadow-sm hover:shadow-md  border border-gray-100 transition-all duration-300 overflow-hidden bg-cover bg-no-repeat bg-white/30 ${
         viewMode === "list" ? "flex items-center p-4 space-x-4" : "p-5"
       }`}
     >
@@ -44,14 +46,17 @@ export default function ProfileCard({
         <h3 className="font-semibold text-gray-900 capitalize">
           {profile.name}
         </h3>
-        <p className="text-sm text-gray-500">{profile.category}</p>
-        <p className="text-xs text-gray-400">{profile.location}</p>
+        <p className="text-[12px] font-semibold text-gray-700">{profile.category}</p>
         <p className="text-xs p-2">{profile.shortBio || profile.description}</p>
         <div className="flex items-center justify-center gap-2 mt-1 text-xs text-gray-500">
           {profile.yearsExperience && (
             <span>{profile.yearsExperience} yrs exp</span>
           )}
+          <div className="flex justify-between space-x-10">
+
+          <p className="text-xs  text-gray-900">{profile.location}</p>
           <span>⭐ {profile.rating}</span>
+          </div>
         </div>
       </div>
 

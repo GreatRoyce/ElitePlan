@@ -1,27 +1,18 @@
-// utils/notificationHelper.js
 const Notification = require("../models/notification.model");
 
-const createNotification = async (recipientId, recipientModel, sender, message, type = "consultation") => {
-  if (!recipientId || !recipientModel || !sender || !message) {
-    throw new Error("Missing required notification fields");
+const createNotification = async (recipientId, recipientModel, senderProfile, message, type) => {
+  try {
+    await Notification.create({
+      user: recipientId,              // Receiver
+      userModel: recipientModel,      // "PlannerProfile" etc.
+      sender: senderProfile._id,      // Who triggered it
+      senderModel: senderProfile.profileType || "User",
+      message,
+      type,
+    });
+  } catch (error) {
+    console.error("❌ Error creating notification:", error);
   }
-
-  const notification = await Notification.create({
-    user: recipientId,
-    userModel: recipientModel,
-    sender: {
-      _id: sender._id,
-      fullName: sender.fullName,
-      businessName: sender.businessName || "",
-      imageCover: sender.imageCover || "",
-    },
-    senderModel: sender.profileType || "User",
-    message,
-    type,
-  });
-
-  console.log("✅ Notification created:", notification._id, "for user:", recipientId);
-  return notification;
 };
 
 module.exports = { createNotification };

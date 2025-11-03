@@ -1,47 +1,62 @@
 const Consultation = require("../models/initialConsultation.model");
 const { createNotification } = require("../helpers/notificationHelper");
+const PlannerProfile = require("../models/plannerProfile.model");
+const VendorProfile = require("../models/vendorProfile.model");
 
 // ========================================================
 // Create Consultation Request
 // ========================================================
 const createConsultation = async (req, res) => {
   try {
+    // Create the consultation entry
     const consultation = await Consultation.create({
       ...req.body,
-      user: req.user._id, // whoever is making the request
+      user: req.user._id, // requester
       status: "pending",
     });
 
-    // --- Create Notification ---
-    // Prepare sender profile from middleware
-    const senderProfile = req.profile
-      ? {
-          _id: req.profile._id,
-          fullName: req.profile.fullName,
-          businessName: req.profile.businessName,
-          imageCover: req.profile.imageCover,
-          profileType: req.profileType,
-        }
-      : {
-          _id: req.user._id,
-          fullName: req.user.username, // Fallback to username
-          businessName: "",
-          imageCover: "",
-          profileType: "User",
-        };
+    // Determine sender profile using the name from the form
+    const senderProfile = {
+      _id: req.user._id,
+      // Use the fullName from the form body, fallback to user's name if available
+      fullName: req.body.fullName || req.user.fullName || "A client",
+      profileType: req.profileType || "User",
+    };
 
-    // Call the helper to create the notification
+    // Determine recipient
+    const recipientUserId = consultation.targetUser; // This is the User._id
+    const recipientModel = consultation.targetType; // "PlannerProfile" or "VendorProfile"
+
+    // Find the correct Profile ID for the notification recipient
+    let recipientProfileId = recipientUserId; // Fallback to user ID
+    if (recipientModel === "PlannerProfile") {
+      const profile = await PlannerProfile.findOne({ user: recipientUserId })
+        .select("_id")
+        .lean();
+      if (profile) recipientProfileId = profile._id;
+    } else if (recipientModel === "VendorProfile") {
+      const profile = await VendorProfile.findOne({ user: recipientUserId })
+        .select("_id")
+        .lean();
+      if (profile) recipientProfileId = profile._id;
+    }
+
+    // Create a notification for the recipient
     await createNotification(
-      consultation.targetUser, // The ID of the planner/vendor profile
-      consultation.targetType, // "PlannerProfile" or "VendorProfile"
-      senderProfile,
+      recipientProfileId, // Use the correct Profile ID
+      recipientModel,
+      {
+        _id: senderProfile._id, // Pass only the sender's ID
+        profileType: senderProfile.profileType, // and their model type
+      },
       `You have a new consultation request from ${senderProfile.fullName}.`,
       "consultation"
     );
 
-    res.status(201).json({ success: true, data: consultation });
+    res.status(201).json({ success: true, consultation });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("❌ Error creating consultation:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 

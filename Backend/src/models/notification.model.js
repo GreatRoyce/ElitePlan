@@ -1,28 +1,37 @@
 const mongoose = require("mongoose");
+const Schema = mongoose.Schema;
 
-const senderSchema = new mongoose.Schema(
+const notificationSchema = new Schema(
   {
-    _id: { type: mongoose.Schema.Types.ObjectId, required: true },
-    fullName: { type: String, required: true },
-    businessName: { type: String, default: "" },
-    imageCover: { type: String, default: "" },
-  },
-  { _id: false }
-);
+    user: {
+      type: Schema.Types.ObjectId, // recipient ID
+      required: true,
+      refPath: "userModel", // dynamic reference (PlannerProfile, VendorProfile, User, etc.)
+    },
 
-const notificationSchema = new mongoose.Schema(
-  {
-    user: { type: mongoose.Schema.Types.ObjectId, refPath: "userModel", required: true },
-    userModel: { type: String, enum: ["PlannerProfile", "VendorProfile", "ClientProfile"], required: true },
-    sender: { type: senderSchema, required: true },
-    senderModel: { type: String, enum: ["PlannerProfile", "VendorProfile", "ClientProfile", "User"], required: true },
+    userModel: {
+      type: String,
+      required: true,
+      enum: ["User", "PlannerProfile", "VendorProfile", "ClientProfile"],
+    },
+
+    sender: {
+      type: Schema.Types.ObjectId,
+      refPath: "senderModel", // dynamic ref for sender type
+    },
+
+    senderModel: {
+      type: String,
+      enum: ["User", "PlannerProfile", "VendorProfile", "ClientProfile"],
+    },
+
     message: { type: String, required: true },
-    type: { type: String, enum: ["consultation", "message", "booking"], default: "consultation" },
+    type: { type: String, default: "general" },
     isRead: { type: Boolean, default: false },
+
+    imageCover: { type: String }, // <-- new field for optional image URL/path
   },
   { timestamps: true }
 );
-
-notificationSchema.index({ user: 1, isRead: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Notification", notificationSchema);

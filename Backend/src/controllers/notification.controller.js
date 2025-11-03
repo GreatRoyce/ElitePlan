@@ -3,165 +3,217 @@ const PlannerProfile = require("../models/plannerProfile.model");
 const VendorProfile = require("../models/vendorProfile.model");
 const ClientProfile = require("../models/clientProfile.model");
 
-// ===================================================
-// Helper: Get profile model based on userModel
-// ===================================================
-const getProfileModel = (userModel) => {
-  switch (userModel) {
-    case "PlannerProfile":
-      return PlannerProfile;
-    case "VendorProfile":
-      return VendorProfile;
-    case "ClientProfile":
-      return ClientProfile;
-    default:
-      return null;
+// ========================================
+// 🧩 Helper: Auto-detect all possible user profiles
+// ========================================
+const getUserProfileData = async (user) => {
+  const possibleIds = [user._id];
+  const possibleModels = ["User"];
+
+  const profiles = [
+    { model: PlannerProfile, name: "PlannerProfile" },
+    { model: VendorProfile, name: "VendorProfile" },
+    { model: ClientProfile, name: "ClientProfile" },
+  ];
+
+  for (const { model, name } of profiles) {
+    const profile = await model
+      .findOne({ $or: [{ user: user._id }, { userId: user._id }] })
+      .select("_id")
+      .lean();
+
+    if (profile) {
+      possibleIds.push(profile._id);
+      possibleModels.push(name);
+    }
   }
+
+  return { possibleIds, possibleModels };
 };
 
-// ===================================================
-// CREATE Notification
-// ===================================================
-const createNotification = async (req, res) => {
+// ========================================
+// 📨 Get My Notifications
+// ========================================
+const getMyNotifications = async (req, res) => {
   try {
-    const { user, userModel, sender, senderModel, message, type } = req.body;
+    const { possibleIds, possibleModels } = await getUserProfileData(req.user);
 
-    if (!user || !userModel || !message) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Missing required fields" });
-    }
+    const query = {
+      $or: [
+        { user: { $in: possibleIds } },
+        {
+          $and: [
+            { userModel: { $in: possibleModels } },
+            { user: { $in: possibleIds } },
+          ],
+        },
+      ],
+    };
 
-    const notification = await Notification.create({
-      user,
-      userModel,
-      sender,
-      senderModel,
-      message,
-      type,
-    });
-
-    res.status(201).json({ success: true, notification });
-  } catch (error) {
-    console.error("Error creating notification:", error);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-};
-
-// ===================================================
-// GET My Notifications
-// ===================================================
-const getNotifications = async (req, res) => {
-  try {
-    const userId = req.user?._id;
-
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid or missing authentication data",
-      });
-    }
-
-    const notifications = await Notification.find({
-      user: userId, // Query by the main User ID
-    })
+    const notifications = await Notification.find(query)
+      .select("_id sender message type isRead createdAt imageCover") // <-- include imageCover
+      .populate("sender", "fullName businessName imageCover email") // sender imageCover
       .sort({ createdAt: -1 })
-      .limit(50)
-      .lean(); // Use lean for better performance as we are not modifying docs here
+      .lean();
+
+    const sanitizedNotifications = notifications.map((n) => ({
+      ...n,
+      sender: n.sender || null,
+    }));
 
     res.status(200).json({
       success: true,
-      count: notifications.length,
-      data: notifications,
+      count: sanitizedNotifications.length,
+      notifications: sanitizedNotifications,
     });
-  } catch (error) {
-    console.error("Error fetching notifications:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+  } catch (err) {
+    console.error("❌ Error fetching notifications:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// ===================================================
-// MARK Notification as Read
-// ===================================================
-const markAsRead = async (req, res) => {
+// ========================================
+// ✅ Mark One Notification as Read
+// ========================================
+const markNotificationAsRead = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const notification = await Notification.findByIdAndUpdate(
-      id,
-      { isRead: true },
-      { new: true }
-    );
-
-    if (!notification) {
+    const notification = await Notification.findById(req.params.id);
+    if (!notification)
       return res
         .status(404)
         .json({ success: false, message: "Notification not found" });
-    }
 
-    res.status(200).json({ success: true, notification });
-  } catch (error) {
-    console.error("Error marking notification as read:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    notification.isRead = true;
+    await notification.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Notification marked as read",
+      notification,
+    });
+  } catch (err) {
+    console.error("❌ Error marking notification as read:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// ===================================================
-// DELETE Notification
-// ===================================================
-const deleteNotification = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const notification = await Notification.findByIdAndDelete(id);
-    if (!notification) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Notification not found" });
-    }
-
-    res.status(200).json({ success: true, message: "Notification deleted" });
-  } catch (error) {
-    console.error("Error deleting notification:", error);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-};
-
-// ===================================================
-// MARK ALL Notifications as Read
-// ===================================================
+// ========================================
+// 🔁 Mark All as Read
+// ========================================
 const markAllAsRead = async (req, res) => {
   try {
-    const userId = req.user?._id;
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
+    const { possibleIds } = await getUserProfileData(req.user);
 
     const result = await Notification.updateMany(
-      { user: userId, isRead: false },
+      { user: { $in: possibleIds }, isRead: false },
       { $set: { isRead: true } }
     );
 
-    res
-      .status(200)
-      .json({ success: true, modifiedCount: result.modifiedCount });
-  } catch (error) {
-    console.error("Error marking all notifications as read:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(200).json({
+      success: true,
+      message: `${result.modifiedCount} notifications marked as read`,
+    });
+  } catch (err) {
+    console.error("❌ Error marking all as read:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// ===================================================
-// EXPORTS (modules at the bottom)
-// ===================================================
+// ========================================
+// 🔁 Mark as Unread
+// ========================================
+const markAsUnread = async (req, res) => {
+  try {
+    const notification = await Notification.findById(req.params.id);
+    if (!notification)
+      return res
+        .status(404)
+        .json({ success: false, message: "Notification not found" });
+
+    notification.isRead = false;
+    await notification.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Notification marked as unread",
+      notification,
+    });
+  } catch (err) {
+    console.error("❌ Error marking notification as unread:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ========================================
+// ❌ Delete One Notification
+// ========================================
+const deleteNotification = async (req, res) => {
+  try {
+    const notification = await Notification.findByIdAndDelete(req.params.id);
+    if (!notification)
+      return res
+        .status(404)
+        .json({ success: false, message: "Notification not found" });
+
+    res
+      .status(200)
+      .json({ success: true, message: "Notification deleted successfully" });
+  } catch (err) {
+    console.error("❌ Error deleting notification:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ========================================
+// 🗑️ Delete All Read Notifications
+// ========================================
+const deleteAllRead = async (req, res) => {
+  try {
+    const { possibleIds } = await getUserProfileData(req.user);
+
+    const result = await Notification.deleteMany({
+      user: { $in: possibleIds },
+      isRead: true,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `${result.deletedCount} read notifications deleted`,
+    });
+  } catch (err) {
+    console.error("❌ Error deleting read notifications:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ========================================
+// 🧹 Delete All Notifications
+// ========================================
+const clearAllNotifications = async (req, res) => {
+  try {
+    const { possibleIds } = await getUserProfileData(req.user);
+
+    const result = await Notification.deleteMany({ user: { $in: possibleIds } });
+
+    res.status(200).json({
+      success: true,
+      message: `${result.deletedCount} notifications cleared`,
+    });
+  } catch (err) {
+    console.error("❌ Error clearing notifications:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ========================================
+// 📤 Export
+// ========================================
 module.exports = {
-  createNotification,
-  getNotifications,
-  markAsRead,
+  getMyNotifications,
+  markNotificationAsRead,
   markAllAsRead,
+  markAsUnread,
   deleteNotification,
+  deleteAllRead,
+  clearAllNotifications,
 };

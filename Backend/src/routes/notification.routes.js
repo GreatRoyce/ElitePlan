@@ -4,19 +4,43 @@ const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
 
 const {
-  createNotification,
-  getNotifications,
-  markAsRead,
+  getMyNotifications,
+  markNotificationAsRead,
   markAllAsRead,
-  deleteNotification
+  markAsUnread,
+  deleteNotification,
+  deleteAllRead,
+  clearAllNotifications,
 } = require("../controllers/notification.controller");
 
+// ========================================
+// 🔒 Apply authentication to all routes
+// ========================================
 router.use(authMiddleware());
 
-router.post("/", createNotification);
-router.get("/mine", getNotifications);
-router.patch("/:id/read", markAsRead);
+// ========================================
+// 📬 Notifications Routes
+// ========================================
+
+// 📨 Get all my notifications
+router.get("/mine", getMyNotifications);
+
+// ✅ Mark one notification as read
+router.patch("/:id/read", markNotificationAsRead);
+
+// 🔁 Mark all notifications as read
 router.patch("/mark-all-read", markAllAsRead);
+
+// 🔁 Mark one as unread
+router.patch("/:id/unread", markAsUnread);
+
+// ❌ Delete one notification
 router.delete("/:id", deleteNotification);
+
+// 🗑️ Delete all read notifications
+router.delete("/delete-read", deleteAllRead);
+
+// 🧹 Clear all notifications
+router.delete("/clear-all", clearAllNotifications);
 
 module.exports = router;

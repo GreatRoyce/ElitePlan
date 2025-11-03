@@ -1,80 +1,45 @@
-import React, { useState, useRef, useEffect } from "react";
-import { FaBell } from "react-icons/fa";
+import React from "react";
+import Notifications from "../../Shared/Notifications"; // ✅ shared import
 
 export default function Topbar({
   companyName,
-  notifications = [],
-  toggleSidebar,
+  initialNotifications,
+  onUnreadCountChange,
+  pendingRequestsCount,
+  setActiveSection,
 }) {
-  const [open, setOpen] = useState(false);
-  const dropdownRef = useRef(null);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   return (
-    <header className="flex justify-between items-center bg-white shadow px-6 py-4 sticky top-0 z-20">
-      {/* Left: Company name and mobile toggle */}
-      <div className="flex items-center space-x-4">
-        <button
-          className="md:hidden p-2 bg-brand-navy text-brand-ivory rounded"
-          onClick={toggleSidebar}
-        >
-          ☰
-        </button>
-        <h1 className="text-xl font-bold text-brand-navy">Planner's Lounge</h1>
-      </div>
+    <header className="bg-white/80 backdrop-blur-sm sticky top-0 z-10 border-b border-gray-200 supports-backdrop-blur:bg-white/80">
+      <div className="container mx-auto px-6 py-3 flex justify-between items-center">
+        {/* Left side - Company Name */}
+        <div>
+          <h1 className="text-xl font-semibold text-brand-navy truncate max-w-[200px] md:max-w-none">
+            {companyName || "Planner"}
+          </h1>
+          <p className="text-xs text-gray-500 hidden sm:block">
+            Planner Dashboard
+          </p>
+        </div>
 
-      {/* Right: Notifications */}
-      <div className="relative">
-        <button
-          className="relative p-2 text-brand-navy rounded hover:bg-gray-100"
-          onClick={() => setOpen(!open)}
-        >
-          <FaBell className="text-xl" />
-          {notifications.length > 0 && (
-            <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
-              {notifications.length}
-            </span>
-          )}
-        </button>
-
-        {/* Dropdown */}
-        {open && (
-          <div
-            ref={dropdownRef}
-            className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 shadow-lg rounded-xl z-50 overflow-hidden"
-          >
-            <div className="p-4 text-sm font-semibold border-b border-gray-100">
-              Notifications
+        {/* Right side - Notifications & pending requests */}
+        <div className="flex items-center gap-4">
+          {/* Optional pending requests badge */}
+          {pendingRequestsCount > 0 && (
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-amber-50 border border-amber-200 rounded-full">
+              <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
+              <span className="text-sm text-amber-800 font-medium">
+                {pendingRequestsCount} pending
+              </span>
             </div>
-            {notifications.length ? (
-              <ul className="max-h-64 overflow-y-auto">
-                {notifications.map((n, idx) => (
-                  <li
-                    key={idx}
-                    className="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center space-x-2"
-                  >
-                    <FaBell className="text-brand-gold" />
-                    <span className="text-gray-700">{n.message}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="p-4 text-gray-500 text-sm text-center">
-                No notifications yet
-              </p>
-            )}
-          </div>
-        )}
+          )}
+
+          {/* Shared Notifications */}
+          <Notifications
+            role="planner"
+            pendingRequestsCount={pendingRequestsCount}
+            setActiveSection={setActiveSection}
+          />
+        </div>
       </div>
     </header>
   );

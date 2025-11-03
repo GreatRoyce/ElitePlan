@@ -1,5 +1,6 @@
 const VendorDashboard = require("../../models/dashboard/vendordashboard.model");
 const Notification = require("../../models/notification.model");
+const { getUserProfile } = require("../notification.controller");
 const { updateVendorDashboard } = require("../../helpers/vendor/vendorHelpers");
 
 /**
@@ -167,22 +168,23 @@ const addPayment = async (req, res) => {
  */
 const addNotification = async (req, res) => {
   try {
-    const vendorId = req.user.id;
     const { message, type } = req.body;
 
-    const dashboard = await VendorDashboard.findOne({ vendor: vendorId });
-    if (!dashboard)
-      return res
-        .status(404)
-        .json({ success: false, message: "Dashboard not found" });
+    // Get the correct profile ID for the logged-in user
+    const { profileId, modelName } = await getUserProfile(req.user);
 
-    dashboard.notifications.push({ message, type });
-    await dashboard.save();
+    // Create a notification in the central collection
+    const newNotification = await Notification.create({
+      user: profileId,
+      userModel: modelName,
+      message,
+      type: type || "general",
+    });
 
-    res.status(200).json({
+    res.status(201).json({
       success: true,
-      message: "Notification added successfully",
-      data: dashboard.notifications,
+      message: "Notification created successfully",
+      data: newNotification,
     });
   } catch (error) {
     console.error("Error adding notification:", error);

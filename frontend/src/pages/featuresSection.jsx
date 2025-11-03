@@ -10,6 +10,8 @@ import {
 } from "react-icons/md";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
+import sqz from "../../src/assets/squeeze.png"
+
 
 const keyfeatures = [
   {
@@ -88,7 +90,7 @@ export default function FeaturesSection() {
             <motion.div
               key={feature.id}
               variants={itemVariants}
-              className="group bg-white border border-gray-100 hover:border-brand-gold rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300"
+              className="group bg-cover bg-no-repeat bg-white/20 bg-center order border-gray-100 hover:border-brand-gold rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300" style={{backgroundImage: `url(${sqz})`}}
             >
               <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-brand-gold/10 text-brand-gold mb-4">
                 {feature.icon}
