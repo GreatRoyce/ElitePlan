@@ -10,7 +10,7 @@ import {
   ZoomIn,
 } from "lucide-react";
 import api from "../../utils/axios";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/authContext";
 import { useNavigate } from "react-router-dom";
 
 function ClientPresence({ user, onClose, onProfileSaved }) {

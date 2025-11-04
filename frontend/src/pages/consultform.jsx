@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { 
-  Calendar, 
-  Clock, 
-  MapPin, 
-  Users, 
-  MessageCircle, 
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  Users,
+  MessageCircle,
   CheckCircle2,
   ArrowLeft,
-  Loader2
+  Loader2,
 } from "lucide-react";
 import api from "../utils/axios";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/authContext";
 
 export default function ConsultForm() {
   const { user } = useAuth();
@@ -51,23 +51,40 @@ export default function ConsultForm() {
 
   // Static data
   const eventTypes = [
-    "Weddings", "Corporate Events", "Birthdays", "Concerts", 
-    "Private Parties", "Conferences", "Product Launches", 
-    "Festivals", "Engagements", "Funerals"
+    "Weddings",
+    "Corporate Events",
+    "Birthdays",
+    "Concerts",
+    "Private Parties",
+    "Conferences",
+    "Product Launches",
+    "Festivals",
+    "Engagements",
+    "Funerals",
   ];
 
   const vendorOptions = [
-    "Venue & Accommodation", "Food & Beverage", "Entertainment & Hosting",
-    "Decor & Ambience", "Guest Experience", "Security & Logistics",
-    "Media & Documentation", "Fashion & Beauty", "Transport & Rentals",
-    "Print & Branding", "Tech & Digital", "Health & Safety",
-    "Traditional Engagement", "Kids Entertainment", "Cleaning Services"
+    "Venue & Accommodation",
+    "Food & Beverage",
+    "Entertainment & Hosting",
+    "Decor & Ambience",
+    "Guest Experience",
+    "Security & Logistics",
+    "Media & Documentation",
+    "Fashion & Beauty",
+    "Transport & Rentals",
+    "Print & Branding",
+    "Tech & Digital",
+    "Health & Safety",
+    "Traditional Engagement",
+    "Kids Entertainment",
+    "Cleaning Services",
   ];
 
   const contactMethods = [
     { value: "email", label: "Email", icon: "✉️" },
     { value: "phone", label: "Phone", icon: "📞" },
-    { value: "whatsapp", label: "WhatsApp", icon: "💬" }
+    { value: "whatsapp", label: "WhatsApp", icon: "💬" },
   ];
 
   // Fetch countries
@@ -239,7 +256,6 @@ export default function ConsultForm() {
           return prev - 1;
         });
       }, 1000);
-
     } catch (err) {
       setMessageType("error");
       setMessage(
@@ -268,7 +284,8 @@ export default function ConsultForm() {
             Missing Information
           </h2>
           <p className="text-gray-600 mb-6">
-            Vendor or planner information is missing. Please go back and try again.
+            Vendor or planner information is missing. Please go back and try
+            again.
           </p>
           <button
             onClick={() => navigate(-1)}
@@ -308,33 +325,45 @@ export default function ConsultForm() {
               const StepIcon = step.icon;
               const isCompleted = currentStep > step.number;
               const isCurrent = currentStep === step.number;
-              
+
               return (
                 <div key={step.number} className="flex items-center">
-                  <div className={`flex flex-col items-center ${isCurrent ? 'scale-110' : ''} transition-transform`}>
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
-                      isCompleted 
-                        ? 'bg-green-500 border-green-500 text-white' 
-                        : isCurrent
-                        ? 'border-brand-navy bg-white text-brand-navy'
-                        : 'border-gray-300 bg-white text-gray-400'
-                    } transition-all duration-300`}>
+                  <div
+                    className={`flex flex-col items-center ${
+                      isCurrent ? "scale-110" : ""
+                    } transition-transform`}
+                  >
+                    <div
+                      className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
+                        isCompleted
+                          ? "bg-green-500 border-green-500 text-white"
+                          : isCurrent
+                          ? "border-brand-navy bg-white text-brand-navy"
+                          : "border-gray-300 bg-white text-gray-400"
+                      } transition-all duration-300`}
+                    >
                       {isCompleted ? (
                         <CheckCircle2 className="w-6 h-6" />
                       ) : (
                         <StepIcon className="w-5 h-5" />
                       )}
                     </div>
-                    <span className={`text-sm font-medium mt-2 ${
-                      isCurrent ? 'text-brand-navy' : 'text-gray-500'
-                    }`}>
+                    <span
+                      className={`text-sm font-medium mt-2 ${
+                        isCurrent ? "text-brand-navy" : "text-gray-500"
+                      }`}
+                    >
                       {step.title}
                     </span>
                   </div>
                   {index < steps.length - 1 && (
-                    <div className={`w-16 h-0.5 mx-4 ${
-                      currentStep > step.number ? 'bg-green-500' : 'bg-gray-300'
-                    } transition-colors duration-300`} />
+                    <div
+                      className={`w-16 h-0.5 mx-4 ${
+                        currentStep > step.number
+                          ? "bg-green-500"
+                          : "bg-gray-300"
+                      } transition-colors duration-300`}
+                    />
                   )}
                 </div>
               );
@@ -342,7 +371,10 @@ export default function ConsultForm() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8"
+        >
           {/* Step 1: Event Details */}
           {currentStep === 1 && (
             <div className="space-y-6 animate-fadeIn">
@@ -375,7 +407,9 @@ export default function ConsultForm() {
                   >
                     <option value="">Select Event Type</option>
                     {eventTypes.map((et, i) => (
-                      <option key={i} value={et}>{et}</option>
+                      <option key={i} value={et}>
+                        {et}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -390,7 +424,7 @@ export default function ConsultForm() {
                     name="eventDate"
                     value={formData.eventDate}
                     onChange={handleChange}
-                    min={new Date().toISOString().split('T')[0]}
+                    min={new Date().toISOString().split("T")[0]}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-navy focus:border-transparent transition-all"
                     required
                   />
@@ -430,7 +464,9 @@ export default function ConsultForm() {
                   >
                     <option value="">Select Country</option>
                     {countries.map((c) => (
-                      <option key={c.name} value={c.name}>{c.name}</option>
+                      <option key={c.name} value={c.name}>
+                        {c.name}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -449,7 +485,9 @@ export default function ConsultForm() {
                   >
                     <option value="">Select State</option>
                     {states.map((s) => (
-                      <option key={s} value={s}>{s}</option>
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -468,7 +506,9 @@ export default function ConsultForm() {
                   >
                     <option value="">Select City</option>
                     {cities.map((c) => (
-                      <option key={c} value={c}>{c}</option>
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -519,7 +559,10 @@ export default function ConsultForm() {
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {vendorOptions.map((opt, i) => (
-                    <label key={i} className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                    <label
+                      key={i}
+                      className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                    >
                       <input
                         type="checkbox"
                         name="services"
@@ -540,7 +583,10 @@ export default function ConsultForm() {
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {contactMethods.map((method) => (
-                    <label key={method.value} className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors has-[:checked]:border-brand-navy has-[:checked]:bg-blue-50">
+                    <label
+                      key={method.value}
+                      className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors has-[:checked]:border-brand-navy has-[:checked]:bg-blue-50"
+                    >
                       <input
                         type="radio"
                         name="contactMethod"
@@ -551,7 +597,9 @@ export default function ConsultForm() {
                       />
                       <div className="flex items-center gap-3">
                         <span className="text-lg">{method.icon}</span>
-                        <span className="text-sm font-medium">{method.label}</span>
+                        <span className="text-sm font-medium">
+                          {method.label}
+                        </span>
                       </div>
                     </label>
                   ))}
@@ -586,7 +634,9 @@ export default function ConsultForm() {
                     Consent to Contact
                   </label>
                   <p className="text-sm text-gray-600">
-                    I consent to be contacted regarding this event and understand that my information will be shared with the selected professional.
+                    I consent to be contacted regarding this event and
+                    understand that my information will be shared with the
+                    selected professional.
                   </p>
                 </div>
               </div>
@@ -606,7 +656,9 @@ export default function ConsultForm() {
 
             <button
               type="submit"
-              disabled={isSubmitting || (currentStep === 3 && !formData.consent)}
+              disabled={
+                isSubmitting || (currentStep === 3 && !formData.consent)
+              }
               className="px-8 py-3 bg-brand-navy text-white rounded-lg hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
             >
               {isSubmitting ? (
@@ -624,11 +676,13 @@ export default function ConsultForm() {
 
           {/* Success Message */}
           {message && (
-            <div className={`mt-6 p-4 rounded-lg ${
-              messageType === "success" 
-                ? "bg-green-50 border border-green-200 text-green-800" 
-                : "bg-red-50 border border-red-200 text-red-800"
-            }`}>
+            <div
+              className={`mt-6 p-4 rounded-lg ${
+                messageType === "success"
+                  ? "bg-green-50 border border-green-200 text-green-800"
+                  : "bg-red-50 border border-red-200 text-red-800"
+              }`}
+            >
               <div className="flex items-center gap-3">
                 {messageType === "success" ? (
                   <CheckCircle2 className="w-5 h-5 text-green-600" />

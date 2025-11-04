@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import io from "socket.io-client";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/authContext";
 import api from "../../utils/axios";
 
 // Components

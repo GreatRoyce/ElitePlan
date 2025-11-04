@@ -6,7 +6,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/authContext";
 import io from "socket.io-client";
 import api from "../../utils/axios";
 import { useNavigate } from "react-router-dom";

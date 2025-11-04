@@ -26,7 +26,7 @@ import Nav from "./pages/nav";
 import ProtectedRoute from "./routes/protectedRoute";
 import PublicRoute from "./routes/publicRoute";
 
-import { useAuth } from "./context/AuthContext";
+import { useAuth } from "./context/authContext";
 
 /* -----------------------------
    Layout Wrapper
