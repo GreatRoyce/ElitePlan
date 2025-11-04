@@ -19,7 +19,7 @@ import ClientPresence from "./components/Presence/clientPresence";
 import Suite from "./components/Suite/suite";
 import Consultform from "./pages/consultform";
 import Logout from "./pages/logout";
-import NotFound from "./pages/NotFound";
+import NotFound from "./pages/notFound";
 import Nav from "./pages/nav";
 
 // Routes wrappers
