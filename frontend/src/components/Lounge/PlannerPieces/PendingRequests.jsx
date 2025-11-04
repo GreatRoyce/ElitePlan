@@ -288,7 +288,7 @@ function RequestCard({ request, onSelect }) {
 
       <div className="flex items-center justify-between mt-4 gap-2 pt-3 border-t border-gray-200 flex-shrink-0">
         <button
-          style={{ backgroundImage: `url(${sqz})` }}
+          style={{ backgroundImage: `url(${squeeze})` }}
           onClick={() => onSelect("approve")}
           className="flex items-center gap-2 bg-contain border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 font-medium text-sm px-2 py-2 rounded-lg flex-1 justify-center transition-all duration-200"
         >
@@ -296,7 +296,7 @@ function RequestCard({ request, onSelect }) {
         </button>
         <div className="w-2"></div>
         <button
-          style={{ backgroundImage: `url(${sqz})` }}
+          style={{ backgroundImage: `url(${squeeze})` }}
           onClick={() => onSelect("decline")}
           className="flex items-center gap-1 bg-contain bg-white/80 border-2 border-red-500 text-red-600 hover:bg-red-50 font-medium text-sm px-2 py-2 rounded-lg flex-1 justify-center transition-all duration-200"
         >
