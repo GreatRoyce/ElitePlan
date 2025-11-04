@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import api from "../../utils/axios";
 import { useNavigate } from "react-router-dom";
-import useAuth from "../../hooks/useAuth";
+import { useAuth } from "../../context/authContext";
 
 // Components
 import Sidebar from "./ClientPieces/Sidebar";
