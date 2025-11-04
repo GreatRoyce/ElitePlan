@@ -6,7 +6,6 @@ import PlannerLounge from "./plannerLounge";
 
 function Lounge() {
   const { user, loading } = useAuth();
-  const [bookmarkedProfiles, setBookmarkedProfiles] = useState(new Set());
 
   // 🔄 While loading, show a neutral spinner-like placeholder (no text)
   if (loading) {
@@ -23,15 +22,9 @@ function Lounge() {
   // ✅ Load appropriate lounge directly
   return (
     <div className="bg-gray-50 min-h-screen">
-      {user.role === "client" && (
-        <ClientLounge
-          user={user}
-          bookmarkedProfiles={bookmarkedProfiles}
-          setBookmarkedProfiles={setBookmarkedProfiles}
-        />
-      )}
-      {user.role === "vendor" && <VendorLounge user={user} />}
-      {user.role === "planner" && <PlannerLounge user={user} />}
+      {user.role === "client" && <ClientLounge />}
+      {user.role === "vendor" && <VendorLounge />}
+      {user.role === "planner" && <PlannerLounge />}
     </div>
   );
 }

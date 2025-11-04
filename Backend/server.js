@@ -152,6 +152,7 @@ const io = new Server(server, {
   cors: {
     origin: CLIENT_URL,
     methods: ["GET", "POST"],
+    credentials: true,
   },
 });
 

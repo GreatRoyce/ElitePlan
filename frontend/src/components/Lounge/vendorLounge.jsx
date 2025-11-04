@@ -1,5 +1,11 @@
 // src/components/VendorLounge.jsx
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
 import { useAuth } from "../../context/AuthContext";
 import io from "socket.io-client";
 import api from "../../utils/axios";
@@ -87,6 +93,7 @@ export default function VendorLounge() {
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [lastRefreshed, setLastRefreshed] = useState(null);
 
+  const socketRef = useRef(null);
   const navigate = useNavigate();
   const { user, logout } = useAuth(); // Get user from auth context
 
@@ -128,23 +135,30 @@ export default function VendorLounge() {
   useEffect(() => {
     if (!user?._id) return;
 
-    const socket = io("http://localhost:5000"); // Your backend URL
+    // Use a ref to hold the socket instance to prevent re-connections on re-renders
+    if (!socketRef.current) {
+      // Use environment variable for the backend URL
+      const backendUrl =
+        import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+      socketRef.current = io(backendUrl, { withCredentials: true });
+    }
+
+    const socket = socketRef.current;
 
     socket.on("connect", () => {
       console.log("✅ Connected to WebSocket server");
-      socket.emit("join_room", user._id);
+      socket.emit("join", { userId: user._id, role: user.role });
     });
 
     socket.on("new_notification", (notification) => {
       console.log("🎉 Received new notification:", notification);
-      // Add notification to the topbar and update the count
       setDashboard((prev) => ({
         ...prev,
-        notifications: [notification, ...(prev.notifications || [])],
+        notifications: [notification, ...(prev?.notifications || [])],
       }));
     });
 
-    return () => socket.disconnect();
+    return () => socket.off("new_notification");
   }, [user]);
 
   const handleRefresh = useCallback(() => {
@@ -158,6 +172,7 @@ export default function VendorLounge() {
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {
+      socketRef.current?.disconnect();
       logout();
       navigate("/");
     }
@@ -266,7 +281,10 @@ export default function VendorLounge() {
           return <VendorPendingRequests />;
         case "messages":
           return (
-            <Messages vendorId={user?._id} onUnreadCountChange={setUnreadMessagesCount} />
+            <Messages
+              vendorId={user?._id}
+              onUnreadCountChange={setUnreadMessagesCount}
+            />
           );
         case "profile":
           return (

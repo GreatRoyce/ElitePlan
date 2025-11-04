@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import api from "../../utils/axios";
 import { useNavigate } from "react-router-dom";
+import useAuth from "../../hooks/useAuth";
 
 // Components
 import Sidebar from "./ClientPieces/Sidebar";
@@ -10,17 +11,24 @@ import ProfileModal from "./ClientPieces/ProfileModal";
 import CategoryFilter from "./ClientPieces/CategoryFilter";
 import MessagesSection from "./ClientPieces/MessagesSection";
 import ClientPresence from "../Presence/clientPresence";
+import EventForm from "./ClientPieces/EventForm"; // Add EventForm import
 
 // Icons
-import { Compass, Book, MessageCircle, User, CalendarDays, LogOut } from "lucide-react";
+import {
+  Compass,
+  Book,
+  MessageCircle,
+  User,
+  CalendarDays,
+  LogOut,
+  FileText,
+} from "lucide-react";
 
-export default function ClientLounge({
-  user,
-  bookmarkedProfiles,
-  setBookmarkedProfiles,
-}) {
+export default function ClientLounge() {
+  const { user } = useAuth();
   const [profiles, setProfiles] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [bookmarkedProfiles, setBookmarkedProfiles] = useState(new Set());
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [loading, setLoading] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState(null);
@@ -42,16 +50,20 @@ export default function ClientLounge({
       : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face&auto=format";
 
     // Handle gallery images - convert to full URLs
-    const galleryImages = item.gallery?.map(galleryItem => {
-      if (typeof galleryItem === 'string') {
-        return galleryItem.startsWith('http') 
-          ? galleryItem 
-          : `${baseImageUrl}/${galleryItem.replace(/\\/g, "/")}`;
-      }
-      return galleryItem;
-    }) || [];
+    const galleryImages =
+      item.gallery?.map((galleryItem) => {
+        if (typeof galleryItem === "string") {
+          return galleryItem.startsWith("http")
+            ? galleryItem
+            : `${baseImageUrl}/${galleryItem.replace(/\\/g, "/")}`;
+        }
+        return galleryItem;
+      }) || [];
 
-    console.log(`📸 ${type} Gallery for ${item.businessName || item.companyName}:`, galleryImages);
+    console.log(
+      `📸 ${type} Gallery for ${item.businessName || item.companyName}:`,
+      galleryImages
+    );
 
     const base = {
       id: item._id,
@@ -244,6 +256,37 @@ export default function ClientLounge({
     }
   };
 
+  // Handle Event Form Submission
+  const handleEventFormSubmit = async (formData) => {
+    try {
+      console.log("📝 Event Form Submitted:", formData);
+
+      // Add client information to the form data
+      const eventData = {
+        ...formData,
+        clientId: user?._id,
+        clientName: user?.name || user?.username,
+        clientEmail: user?.email,
+        submittedAt: new Date().toISOString(),
+      };
+
+      // Send to your backend API
+      const response = await api.post("/events", eventData);
+
+      if (response.data.success) {
+        console.log("✅ Event created successfully:", response.data);
+        // Show success message
+        alert("Event form submitted successfully! We'll contact you soon.");
+
+        // Optionally switch to bookings section
+        setActiveSection("bookings");
+      }
+    } catch (error) {
+      console.error("❌ Error submitting event form:", error);
+      alert("Error submitting event form. Please try again.");
+    }
+  };
+
   // Handle logout
   const handleLogout = async () => {
     try {
@@ -258,7 +301,7 @@ export default function ClientLounge({
     }
   };
 
-  // 🧭 Sidebar Navigation with counts
+  // 🧭 Sidebar Navigation with counts - ADDED EVENT FORM
   const navItems = [
     {
       id: "overview",
@@ -270,84 +313,110 @@ export default function ClientLounge({
       icon: <Book className="w-5 h-5" />,
       label: "Saved",
     },
-    { id: "bookings", icon: <CalendarDays className="w-5 h-5" />, label: "Bookings" },
-    { id: "messages", icon: <MessageCircle className="w-5 h-5" />, label: "Messages" },
-    { id: "profile", icon: <User className="w-5 h-5" />, label: "My Profile" },
+    {
+      id: "event-form",
+      icon: <FileText className="w-5 h-5" />,
+      label: "Event Form",
+    },
+    {
+      id: "bookings",
+      icon: <CalendarDays className="w-5 h-5" />,
+      label: "Bookings",
+    },
+    {
+      id: "messages",
+      icon: <MessageCircle className="w-5 h-5" />,
+      label: "Messages",
+    },
+    {
+      id: "profile",
+      icon: <User className="w-5 h-5" />,
+      label: "My Profile",
+    },
   ];
 
   // Counts for sidebar badges
-  const sidebarCounts = useMemo(() => ({
-    overview: profiles.length,
-    saved: bookmarkedProfiles.size,
-    messages: 0, // You can add message count logic here
-  }), [profiles.length, bookmarkedProfiles.size]);
+  const sidebarCounts = useMemo(
+    () => ({
+      overview: profiles.length,
+      saved: bookmarkedProfiles.size,
+      messages: 0, // You can add message count logic here
+    }),
+    [profiles.length, bookmarkedProfiles.size]
+  );
 
-  // 🎨 Dynamic content
+  // 🎨 Dynamic content - ADDED EVENT FORM CASE
   const renderContent = () => {
-    if (activeSection === "profile") return <ClientPresence user={user} />;
-    if (activeSection === "messages") return <MessagesSection />;
-    if (activeSection === "bookings")
-      return (
-        <BookingsSection
-          bookings={bookings}
-          bookingsLoading={bookingsLoading}
-        />
-      );
-
-    // Default (overview/saved)
-    return (
-      <div className="space-y-6">
-        {activeSection === "overview" && (
-          <CategoryFilter
-            selectedCategory={selectedCategory}
-            setSelectedCategory={setSelectedCategory}
+    switch (activeSection) {
+      case "profile":
+        return <ClientPresence user={user} />;
+      case "messages":
+        return <MessagesSection />;
+      case "bookings":
+        return (
+          <BookingsSection
+            bookings={bookings}
+            bookingsLoading={bookingsLoading}
           />
-        )}
-
-        {loading ? (
-          <div className="flex justify-center items-center py-20">
-            <div className="flex flex-col items-center space-y-4">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-x-brand-gold"></div>
-              <p className="text-gray-500">Loading professionals...</p>
-            </div>
-          </div>
-        ) : filteredProfiles.length > 0 ? (
-          <div
-            className={
-              viewMode === "grid"
-                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-                : "flex flex-col space-y-4"
-            }
-          >
-            {filteredProfiles.map((profile) => (
-              <ProfileCard
-                key={profile.id}
-                profile={profile}
-                toggleBookmark={toggleBookmark}
-                bookmarkLoading={bookmarkLoading}
-                bookmarkedProfiles={bookmarkedProfiles}
-                setSelectedProfile={setSelectedProfile}
-                user={user}
-                viewMode={viewMode}
+        );
+      case "event-form":
+        return <EventForm onSubmit={handleEventFormSubmit} />;
+      default:
+        // Default (overview/saved)
+        return (
+          <div className="space-y-6">
+            {activeSection === "overview" && (
+              <CategoryFilter
+                selectedCategory={selectedCategory}
+                setSelectedCategory={setSelectedCategory}
               />
-            ))}
+            )}
+
+            {loading ? (
+              <div className="flex justify-center items-center py-20">
+                <div className="flex flex-col items-center space-y-4">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-x-brand-gold"></div>
+                  <p className="text-gray-500">Loading professionals...</p>
+                </div>
+              </div>
+            ) : filteredProfiles.length > 0 ? (
+              <div
+                className={
+                  viewMode === "grid"
+                    ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                    : "flex flex-col space-y-4"
+                }
+              >
+                {filteredProfiles.map((profile) => (
+                  <ProfileCard
+                    key={profile.id}
+                    profile={profile}
+                    toggleBookmark={toggleBookmark}
+                    bookmarkLoading={bookmarkLoading}
+                    bookmarkedProfiles={bookmarkedProfiles}
+                    setSelectedProfile={setSelectedProfile}
+                    user={user}
+                    viewMode={viewMode}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center shadow-sm">
+                <h3 className="text-2xl font-semibold text-gray-900 mb-3">
+                  {activeSection === "saved"
+                    ? "No saved profiles yet"
+                    : "No profiles found"}
+                </h3>
+                <p className="text-gray-500 text-lg max-w-md mx-auto leading-relaxed">
+                  {activeSection === "saved"
+                    ? "Start saving planners or vendors you like"
+                    : "Try a different search term or explore another category"}
+                </p>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center shadow-sm">
-            <h3 className="text-2xl font-semibold text-gray-900 mb-3">
-              {activeSection === "saved"
-                ? "No saved profiles yet"
-                : "No profiles found"}
-            </h3>
-            <p className="text-gray-500 text-lg max-w-md mx-auto leading-relaxed">
-              {activeSection === "saved"
-                ? "Start saving planners or vendors you like"
-                : "Try a different search term or explore another category"}
-            </p>
-          </div>
-        )}
-      </div>
-    );
+        );
+    }
   };
 
   return (
@@ -365,7 +434,9 @@ export default function ClientLounge({
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 lg:ml-0"> {/* Remove fixed margin */}
+      <div className="flex-1 flex flex-col min-w-0 lg:ml-0">
+        {" "}
+        {/* Remove fixed margin */}
         {/* Topbar */}
         <Topbar
           user={user}
@@ -374,13 +445,11 @@ export default function ClientLounge({
           viewMode={viewMode}
           setViewMode={setViewMode}
           onMenuToggle={() => setIsMobileOpen(!isMobileOpen)}
+          activeSection={activeSection} // Pass activeSection to show context
         />
-
         {/* Scrollable Main Content */}
         <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto w-full">
-            {renderContent()}
-          </div>
+          <div className="max-w-7xl mx-auto w-full">{renderContent()}</div>
         </main>
       </div>
 

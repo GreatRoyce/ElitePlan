@@ -1,6 +1,7 @@
 // src/components/PlannerPieces/PlannerLounge.jsx
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import io from "socket.io-client";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../utils/axios";
 
@@ -29,6 +30,7 @@ export default function PlannerLounge() {
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const navigate = useNavigate();
+  const socketRef = useRef(null);
 
   const fetchDashboard = useCallback(async () => {
     setLoading(true);
@@ -54,6 +56,37 @@ export default function PlannerLounge() {
   useEffect(() => {
     fetchDashboard();
   }, [fetchDashboard]);
+
+  // Real-time notification listener
+  useEffect(() => {
+    if (!user?._id) return;
+
+    // Use a ref to hold the socket instance
+    if (!socketRef.current) {
+      const backendUrl =
+        import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+      socketRef.current = io(backendUrl, { withCredentials: true });
+    }
+
+    const socket = socketRef.current;
+
+    socket.on("connect", () => {
+      console.log("✅ Planner connected to WebSocket server");
+      socket.emit("join", { userId: user._id, role: user.role });
+    });
+
+    // Listen for new notifications or requests
+    socket.on("new_notification", (notification) => {
+      console.log("🎉 Planner received new notification:", notification);
+      // Refresh dashboard data to get the latest state
+      fetchDashboard();
+    });
+
+    // Cleanup on component unmount
+    return () => {
+      socket.off("new_notification");
+    };
+  }, [user, fetchDashboard]);
 
   if (loading)
     return (
@@ -125,6 +158,7 @@ export default function PlannerLounge() {
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {
+      socketRef.current?.disconnect();
       logout();
       navigate("/");
     }
