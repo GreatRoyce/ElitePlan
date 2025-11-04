@@ -3,7 +3,6 @@ import React, { useEffect, useState, useRef } from "react";
 import { Check, X, User, Calendar, Loader2, MapPin, Users } from "lucide-react";
 import api from "../../../utils/axios";
 import squeeze from "../../../../src/assets/edge.png";
-import sqz from "../../../../src/assets/walls.png";
 import { io } from "socket.io-client";
 
 const SOCKET_SERVER_URL = "http://localhost:3000"; // Update if needed
