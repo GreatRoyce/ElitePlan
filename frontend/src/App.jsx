@@ -7,6 +7,10 @@ import {
 } from "react-router-dom";
 import "./App.css";
 
+
+console.log("🔍 API URL:", import.meta.env.VITE_API_URL);
+
+
 // Pages
 import Connect from "./pages/connect"; // Landing page
 import FeaturesSection from "./pages/featuresSection";
