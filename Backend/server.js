@@ -17,19 +17,16 @@ app.set("etag", false); // Disable ETag generation
 // ⚙️ Database Connection
 // =======================
 connectDB();
-console.log(
-  "🔍 Attempting to connect to MongoDB with URI:",
-  process.env.MONGO_URI
-);
+console.log("🔍 Attempting to connect to MongoDB with URI:", process.env.MONGO_URI);
 
 // =======================
 // 🔧 Middleware
 // =======================
-const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
+const CLIENT_URL = process.env.CLIENT_URL || "https://eliteplan.netlify.app";
 
 app.use(
   cors({
-    origin: process.env.MODE === "react" ? CLIENT_URL : "*",
+    origin: CLIENT_URL,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
   })
@@ -120,7 +117,6 @@ app.use("/api/v1/consultation", initialConsultationRoutes);
 app.use("/api/v1/bookmarks", bookmarkRoutes);
 app.use("/api/v1/messages", messageRoutes);
 
-
 // =======================
 // ⚠️ Global Error Handler
 // =======================
@@ -192,5 +188,6 @@ io.on("connection", (socket) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🌐 Allowed client: ${CLIENT_URL}`);
 });
