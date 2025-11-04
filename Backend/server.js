@@ -22,13 +22,26 @@ console.log("🔍 Attempting to connect to MongoDB with URI:", process.env.MONGO
 // =======================
 // 🔧 Middleware
 // =======================
-const CLIENT_URL = process.env.CLIENT_URL || "https://eliteplan.netlify.app";
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://eliteplan.netlify.app",
+  "https://www.eliteplan.netlify.app",
+];
 
 app.use(
   cors({
-    origin: CLIENT_URL,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (e.g., curl, mobile apps)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.warn("❌ Blocked CORS for origin:", origin);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   })
 );
 
@@ -43,6 +56,8 @@ app.use(express.urlencoded({ extended: true }));
 // 🖼️ Static Files
 // =======================
 const __dirnameResolved = path.resolve();
+const CLIENT_URL = process.env.CLIENT_URL || "https://eliteplan.netlify.app";
+
 app.use(
   "/uploads",
   express.static(path.join(__dirnameResolved, "uploads"), {
@@ -146,7 +161,7 @@ const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server, {
   cors: {
-    origin: CLIENT_URL,
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -189,5 +204,5 @@ io.on("connection", (socket) => {
 
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🌐 Allowed client: ${CLIENT_URL}`);
+  console.log(`🌐 Allowed clients: ${allowedOrigins.join(", ")}`);
 });
