@@ -33,7 +33,7 @@ const getDashboard = async (req, res) => {
       });
     }
 
-    await updateDashboard(dashboard);
+    // await updateDashboard(dashboard); // Temporarily disabled to fix loading issue
 
     const pendingRequests = await InitialConsultation.find({
       targetUser: plannerId,
