@@ -11,7 +11,7 @@ import {
   Loader2
 } from "lucide-react";
 import api from "../utils/axios";
-import { useAuth } from "../../src/context/AuthContext";
+import { useAuth } from "../context/AuthContext";
 
 export default function ConsultForm() {
   const { user } = useAuth();
