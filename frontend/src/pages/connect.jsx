@@ -3,8 +3,7 @@ import waved from "../assets/waved.jpg";
 import eliteplan from "../assets/elite.png";
 import rip from "../assets/rip.png";
 import squeeze from "../assets/squeeze.png";
-import pattern from "../assets/pattern.png";
-import pattern2 from "../assets/pattern2.png";
+
 
 import {
   FaSquareXTwitter,
