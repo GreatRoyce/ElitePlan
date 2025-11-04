@@ -1,7 +1,7 @@
 // components/Lounge/VendorPieces/MessagesSection.jsx
 import React, { useState, useEffect } from "react";
 import Chat from "../../Shared/Chat";
-import api from "../../../utils/axios";
+import api from "../../../utils/axios"; // Corrected import path
 import { useAuth } from "../../../context/authContext";
 
 export default function MessagesSection({ vendorId }) {
@@ -78,7 +78,7 @@ export default function MessagesSection({ vendorId }) {
                   key={chat._id}
                   onClick={() => setActiveChat(chat)}
                   className={`p-3 rounded-xl cursor-pointer transition-all ${
-                    activeChat === chat.participantId
+                    activeChat?.participantId === chat.participantId
                       ? "bg-brand-ivory border-l-4 border-brand-gold"
                       : "hover:bg-gray-50"
                   }`}

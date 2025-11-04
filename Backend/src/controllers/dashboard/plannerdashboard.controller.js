@@ -13,10 +13,11 @@ const { getUserProfile } = require("../notification.controller");
 // -------------------- DASHBOARD --------------------
 const getDashboard = async (req, res) => {
   try {
-    const plannerId = req.user.id;
+    const plannerId = req.user._id;
 
-    let dashboard = await PlannerDashboard.findOne({ planner: plannerId })
-      .populate("events.client events.vendors upcomingDeadlines.event");
+    let dashboard = await PlannerDashboard.findOne({
+      planner: plannerId,
+    }).populate("events.client events.vendors upcomingDeadlines.event");
 
     if (!dashboard) {
       dashboard = await PlannerDashboard.create({
@@ -52,15 +53,21 @@ const getDashboard = async (req, res) => {
 // -------------------- EVENT --------------------
 const updateEventStatus = async (req, res) => {
   try {
-    const plannerId = req.user.id;
+    const plannerId = req.user._id;
     const { eventId } = req.params;
     const { status } = req.body;
 
     const dashboard = await PlannerDashboard.findOne({ planner: plannerId });
-    if (!dashboard) return res.status(404).json({ success: false, message: "Dashboard not found" });
+    if (!dashboard)
+      return res
+        .status(404)
+        .json({ success: false, message: "Dashboard not found" });
 
     const event = dashboard.events.id(eventId);
-    if (!event) return res.status(404).json({ success: false, message: "Event not found" });
+    if (!event)
+      return res
+        .status(404)
+        .json({ success: false, message: "Event not found" });
 
     event.status = status;
     event.updatedAt = Date.now();
@@ -78,12 +85,15 @@ const updateEventStatus = async (req, res) => {
 // -------------------- PAYMENTS --------------------
 const addPaymentController = async (req, res) => {
   try {
-    const plannerId = req.user.id;
+    const plannerId = req.user._id;
     const { eventId } = req.params;
     const { amount, status, method } = req.body;
 
     const dashboard = await PlannerDashboard.findOne({ planner: plannerId });
-    if (!dashboard) return res.status(404).json({ success: false, message: "Dashboard not found" });
+    if (!dashboard)
+      return res
+        .status(404)
+        .json({ success: false, message: "Dashboard not found" });
 
     addPayment(dashboard, eventId, { amount, status, method });
 
@@ -91,7 +101,9 @@ const addPaymentController = async (req, res) => {
     res.json({ success: true, data: dashboard });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: error.message || "Server error" });
+    res
+      .status(500)
+      .json({ success: false, message: error.message || "Server error" });
   }
 };
 
@@ -108,7 +120,11 @@ const addNotification = async (req, res) => {
       type: type || "general",
     });
 
-    res.status(201).json({ success: true, message: "Notification created successfully", data: newNotification });
+    res.status(201).json({
+      success: true,
+      message: "Notification created successfully",
+      data: newNotification,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Server error" });
@@ -118,31 +134,51 @@ const addNotification = async (req, res) => {
 // -------------------- RATINGS --------------------
 const addRating = async (req, res) => {
   try {
-    const plannerId = req.user.id;
+    const plannerId = req.user._id;
     const { clientId, score, comment } = req.body;
 
-    if (!clientId || score == null) return res.status(400).json({ success: false, message: "Client ID and rating score are required." });
+    if (!clientId || score == null)
+      return res.status(400).json({
+        success: false,
+        message: "Client ID and rating score are required.",
+      });
 
     const dashboard = await PlannerDashboard.findOne({ planner: plannerId });
-    if (!dashboard) return res.status(404).json({ success: false, message: "Dashboard not found" });
+    if (!dashboard)
+      return res
+        .status(404)
+        .json({ success: false, message: "Dashboard not found" });
 
-    const existingRating = dashboard.ratings.find((r) => r.client.toString() === clientId);
+    const existingRating = dashboard.ratings.find(
+      (r) => r.client.toString() === clientId
+    );
     if (existingRating) {
       existingRating.score = Number(score);
       existingRating.comment = comment;
       existingRating.date = new Date();
     } else {
-      dashboard.ratings.push({ client: clientId, score: Number(score), comment });
+      dashboard.ratings.push({
+        client: clientId,
+        score: Number(score),
+        comment,
+      });
     }
 
     const totalScore = dashboard.ratings.reduce((sum, r) => sum + r.score, 0);
-    dashboard.averageRating = dashboard.ratings.length > 0 ? totalScore / dashboard.ratings.length : 0;
+    dashboard.averageRating =
+      dashboard.ratings.length > 0 ? totalScore / dashboard.ratings.length : 0;
 
     await dashboard.save();
-    res.status(200).json({ success: true, message: "Rating added successfully", data: dashboard });
+    res.status(200).json({
+      success: true,
+      message: "Rating added successfully",
+      data: dashboard,
+    });
   } catch (error) {
     console.error("❌ Error adding rating:", error);
-    res.status(500).json({ success: false, message: "Server error while adding rating" });
+    res
+      .status(500)
+      .json({ success: false, message: "Server error while adding rating" });
   }
 };
 
@@ -150,28 +186,45 @@ const addRating = async (req, res) => {
 const recruitVendor = async (req, res) => {
   try {
     const { eventId, vendorId, role } = req.body;
-    const plannerId = req.user.id;
+    const plannerId = req.user._id;
 
     const dashboard = await PlannerDashboard.findOne({ planner: plannerId });
-    if (!dashboard) return res.status(404).json({ success: false, message: "Planner dashboard not found" });
+    if (!dashboard)
+      return res
+        .status(404)
+        .json({ success: false, message: "Planner dashboard not found" });
 
     const event = dashboard.events.id(eventId);
-    if (!event) return res.status(404).json({ success: false, message: "Event not found" });
+    if (!event)
+      return res
+        .status(404)
+        .json({ success: false, message: "Event not found" });
 
-    const alreadyAdded = event.vendors.some((v) => v.vendor.toString() === vendorId);
-    if (alreadyAdded) return res.status(400).json({ success: false, message: "Vendor already recruited" });
+    const alreadyAdded = event.vendors.some(
+      (v) => v.vendor.toString() === vendorId
+    );
+    if (alreadyAdded)
+      return res
+        .status(400)
+        .json({ success: false, message: "Vendor already recruited" });
 
     event.vendors.push({ vendor: vendorId, role });
     await dashboard.save();
 
     let vendorDashboard = await VendorDashboard.findOne({ vendor: vendorId });
-    if (!vendorDashboard) vendorDashboard = await VendorDashboard.create({ vendor: vendorId, assignedEvents: [event._id] });
+    if (!vendorDashboard)
+      vendorDashboard = await VendorDashboard.create({
+        vendor: vendorId,
+        assignedEvents: [event._id],
+      });
     else if (!vendorDashboard.assignedEvents.includes(event._id)) {
       vendorDashboard.assignedEvents.push(event._id);
       await vendorDashboard.save();
     }
 
-    const vendorProfile = await VendorProfile.findOne({ user: vendorId }).select("_id").lean() || { _id: vendorId };
+    const vendorProfile = (await VendorProfile.findOne({ user: vendorId })
+      .select("_id")
+      .lean()) || { _id: vendorId };
 
     await Notification.create({
       user: vendorProfile._id,
@@ -184,7 +237,8 @@ const recruitVendor = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Vendor successfully tied to event and synced to vendor dashboard",
+      message:
+        "Vendor successfully tied to event and synced to vendor dashboard",
       data: { event: event, vendorDashboard: vendorDashboard.assignedEvents },
     });
   } catch (error) {
@@ -197,7 +251,7 @@ const recruitVendor = async (req, res) => {
 // Get all planner conversations
 const getPlannerConversations = async (req, res) => {
   try {
-    const plannerId = req.user.id;
+    const plannerId = req.user._id;
 
     const messages = await Message.find({
       $or: [{ sender: plannerId }, { recipient: plannerId }],
@@ -209,18 +263,28 @@ const getPlannerConversations = async (req, res) => {
 
     const conversationsMap = {};
     messages.forEach((msg) => {
-      const other = msg.sender._id.toString() === plannerId ? msg.recipient : msg.sender;
+      const other =
+        msg.sender._id.toString() === plannerId.toString()
+          ? msg.recipient
+          : msg.sender;
       const otherId = other._id.toString();
 
       if (!conversationsMap[otherId]) {
-        conversationsMap[otherId] = { participant: other, lastMessage: msg, messages: [msg] };
+        conversationsMap[otherId] = {
+          participant: other,
+          lastMessage: msg,
+          messages: [msg],
+        };
       } else {
         conversationsMap[otherId].messages.push(msg);
-        if (msg.createdAt > conversationsMap[otherId].lastMessage.createdAt) conversationsMap[otherId].lastMessage = msg;
+        if (msg.createdAt > conversationsMap[otherId].lastMessage.createdAt)
+          conversationsMap[otherId].lastMessage = msg;
       }
     });
 
-    res.status(200).json({ success: true, conversations: Object.values(conversationsMap) });
+    res
+      .status(200)
+      .json({ success: true, conversations: Object.values(conversationsMap) });
   } catch (err) {
     console.error("❌ Error fetching planner conversations:", err);
     res.status(500).json({ message: "Server error fetching conversations" });
@@ -230,10 +294,11 @@ const getPlannerConversations = async (req, res) => {
 // Send a message as planner
 const sendPlannerMessage = async (req, res) => {
   try {
-    const plannerId = req.user.id;
+    const plannerId = req.user._id;
     const { recipientId, text } = req.body;
 
-    if (!recipientId || !text) return res.status(400).json({ message: "recipientId and text required" });
+    if (!recipientId || !text)
+      return res.status(400).json({ message: "recipientId and text required" });
 
     const message = await Message.create({
       sender: plannerId,
@@ -251,7 +316,8 @@ const sendPlannerMessage = async (req, res) => {
     const io = req.app.get("io");
     const connectedUsers = req.app.get("connectedUsers") || {};
     const recipientSocket = connectedUsers[recipientId];
-    if (recipientSocket) io.to(recipientSocket.socketId).emit("receive_message", populated);
+    if (recipientSocket)
+      io.to(recipientSocket.socketId).emit("receive_message", populated);
 
     res.status(201).json(populated);
   } catch (err) {
@@ -269,4 +335,4 @@ module.exports = {
   recruitVendor,
   getPlannerConversations,
   sendPlannerMessage,
-}
+};

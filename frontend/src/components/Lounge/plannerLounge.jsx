@@ -85,6 +85,7 @@ export default function PlannerLounge() {
     // Cleanup on component unmount
     return () => {
       socket.off("new_notification");
+      socket.disconnect();
     };
   }, [user, fetchDashboard]);
 
@@ -156,7 +157,7 @@ export default function PlannerLounge() {
     try {
       await api.post("/auth/logout");
     } catch (error) {
-      console.error("Logout failed:", error);
+      console.error("Logout API call failed:", error);
     } finally {
       socketRef.current?.disconnect();
       logout();

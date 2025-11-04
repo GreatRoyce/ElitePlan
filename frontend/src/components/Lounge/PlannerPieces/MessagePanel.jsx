@@ -33,7 +33,8 @@ export default function MessagesPanel({ plannerId, onUnreadCountChange }) {
           setConversations(formatted);
           // Report the total unread count to the parent
           const totalUnread = formatted.reduce(
-            (sum, convo) => sum + convo.unreadCount, 0
+            (sum, convo) => sum + convo.unreadCount,
+            0
           );
           onUnreadCountChange?.(totalUnread);
         }
@@ -52,7 +53,9 @@ export default function MessagesPanel({ plannerId, onUnreadCountChange }) {
     setDeletingConversation(participantId);
     try {
       await api.delete(`/messages/conversations/${participantId}`);
-      setConversations(prev => prev.filter(c => c.participantId !== participantId));
+      setConversations((prev) =>
+        prev.filter((c) => c.participantId !== participantId)
+      );
       if (activeChat === participantId) setActiveChat(null);
     } catch (err) {
       console.error("❌ Error deleting conversation:", err);
@@ -66,12 +69,16 @@ export default function MessagesPanel({ plannerId, onUnreadCountChange }) {
     const date = new Date(ts);
     const now = new Date();
     const diffHours = (now - date) / (1000 * 60 * 60);
-    if (diffHours < 24) return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    if (diffHours < 24)
+      return date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     if (diffHours < 48) return "Yesterday";
     return date.toLocaleDateString([], { month: "short", day: "numeric" });
   };
 
-  const filteredConversations = conversations.filter(chat => 
+  const filteredConversations = conversations.filter((chat) =>
     chat.participantName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -117,10 +124,10 @@ export default function MessagesPanel({ plannerId, onUnreadCountChange }) {
             <div className="space-y-2 max-h-[60vh] overflow-y-auto">
               {filteredConversations.map((chat) => (
                 <div
-                  key={chat._id}
+                  key={chat.participantId}
                   onClick={() => setActiveChat(chat)} // Set the entire chat object as active
                   className={`p-3 rounded-xl cursor-pointer transition-all relative group ${
-                    activeChat === chat.participantId
+                    activeChat?.participantId === chat.participantId
                       ? "bg-brand-ivory border-l-4 border-brand-gold"
                       : "hover:bg-gray-50"
                   }`}
@@ -131,8 +138,12 @@ export default function MessagesPanel({ plannerId, onUnreadCountChange }) {
                         <User size={18} className="text-brand-navy" />
                       </div>
                       <div className="truncate">
-                        <p className="font-medium text-gray-800 truncate">{chat.participantName}</p>
-                        <p className="text-xs text-gray-500 truncate">{chat.lastMessage || "No messages yet"}</p>
+                        <p className="font-medium text-gray-800 truncate">
+                          {chat.participantName}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {chat.lastMessage || "No messages yet"}
+                        </p>
                       </div>
                     </div>
 
@@ -142,11 +153,15 @@ export default function MessagesPanel({ plannerId, onUnreadCountChange }) {
                           {chat.unreadCount}
                         </span>
                       )}
-                      <span className="text-xs text-gray-400 whitespace-nowrap">{formatTime(chat.lastMessageTimestamp)}</span>
+                      <span className="text-xs text-gray-400 whitespace-nowrap">
+                        {formatTime(chat.lastMessageTimestamp)}
+                      </span>
 
                       {/* Delete */}
                       <button
-                        onClick={(e) => handleDeleteConversation(chat.participantId, e)}
+                        onClick={(e) =>
+                          handleDeleteConversation(chat.participantId, e)
+                        }
                         disabled={deletingConversation === chat.participantId}
                         className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all duration-200 disabled:opacity-50"
                         title="Delete conversation"
@@ -178,16 +193,7 @@ export default function MessagesPanel({ plannerId, onUnreadCountChange }) {
               // refresh sidebar to update last message/unread
               const refreshConversations = async () => {
                 try {
-                  const res = await api.get("/consultation/mine");
-                  const formatted = (res.data || []).map((chat) => ({
-                    _id: chat._id,
-                    participantId: chat.user._id,
-                    participantName: chat.user.username || chat.user.firstName || "Unknown User",
-                    lastMessage: chat.lastMessage?.text || "",
-                    lastMessageTimestamp: chat.lastMessage?.createdAt || null,
-                    unreadCount: chat.unreadCount || 0,
-                  }));
-                  setConversations(formatted);
+                  // This part is already changed above
                 } catch (err) {
                   console.error("❌ Error refreshing conversations:", err);
                 }

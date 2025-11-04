@@ -16,8 +16,8 @@ import Sidebar from "./VendorPieces/Sidebar";
 import Topbar from "./VendorPieces/Topbar";
 import VendorDashboard from "./VendorPieces/VendorDashboard";
 import PendingRequests from "./VendorPieces/PendingRequests";
-import Messages from "./VendorPieces/Messages";
 import MyProfile from "./VendorPieces/MyProfile";
+import MessagePanel from "./PlannerPieces/MessagePanel"; // Re-using the robust message panel
 import NotificationCenter from "../../pages/NotificationCenter";
 
 // Loading Components
@@ -103,7 +103,7 @@ export default function VendorLounge() {
       setError(null);
       if (!refreshing) setLoading(true);
 
-      const res = await api.get("/vendor-profile/me");
+      const res = await api.get("/vendor-dashboard"); // Use the new comprehensive endpoint
       console.log("Vendor dashboard data:", res.data);
 
       if (res.data.success) {
@@ -173,7 +173,7 @@ export default function VendorLounge() {
       console.error("Logout failed:", error);
     } finally {
       socketRef.current?.disconnect();
-      logout();
+      logout(); // This will clear context
       navigate("/");
     }
   };
@@ -281,9 +281,10 @@ export default function VendorLounge() {
           return <VendorPendingRequests />;
         case "messages":
           return (
-            <Messages
-              vendorId={user?._id}
+            <MessagePanel
+              plannerId={user?._id} // Prop is named plannerId, but it's just the user's ID
               onUnreadCountChange={setUnreadMessagesCount}
+              // The panel will fetch its own conversations
             />
           );
         case "profile":
