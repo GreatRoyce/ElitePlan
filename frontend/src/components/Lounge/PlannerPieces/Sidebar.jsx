@@ -20,7 +20,7 @@ const Sidebar = ({
   handleLogout,
   isLoggingOut,
   setIsMobileOpen,
-  isMobileOpen, // Assuming isMobileOpen is passed from parent
+  isMobileOpen,
 }) => {
   const menuItems = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -35,7 +35,6 @@ const Sidebar = ({
     { id: "profile", label: "Profile", icon: User },
   ];
 
-  // Notifications button (footer area)
   const notificationsItem = {
     id: "notifications",
     label: "Notifications",
@@ -140,9 +139,10 @@ const Sidebar = ({
               );
             })}
           </ul>
-           <button
+          
+          <button
             onClick={() => handleMenuItemClick(notificationsItem.id)}
-            className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all duration-200 group
+            className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all duration-200 group mt-1
             ${
               activeSection === notificationsItem.id
                 ? "bg-gradient-to-r from-brand-navy to-brand-royal text-brand-ivory shadow-lg"
@@ -161,14 +161,10 @@ const Sidebar = ({
               </span>
             )}
           </button>
-
         </nav>
 
-        {/* Footer - Notifications + Logout */}
-        <div className="p-4 border-t border-brand-charcoal/10 bg-brand-ivory/50 flex flex-col gap-2">
-          {/* Notifications */}
-         
-          {/* Logout */}
+        {/* Footer - Logout */}
+        <div className="p-4 border-t border-brand-charcoal/10 bg-brand-ivory/50">
           <button
             onClick={handleLogout}
             disabled={isLoggingOut}
