@@ -186,11 +186,17 @@ export default function PlannerLounge() {
         handleLogout={handleLogoutWithDelay}
         isLoggingOut={isLoggingOut}
         setIsMobileOpen={setIsMobileOpen}
+        isMobileOpen={isMobileOpen}
         unreadNotificationsCount={unreadNotificationsCount}
       />
 
       {/* Main Section */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div 
+        className="flex-1 flex flex-col min-h-0"
+        onClick={() => {
+          if (isMobileOpen) setIsMobileOpen(false);
+        }}
+      >
         <Topbar
           companyName={companyName}
           initialNotifications={dashboard.notifications}

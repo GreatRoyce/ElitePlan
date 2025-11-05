@@ -340,7 +340,7 @@ function Connect() {
           <footer className="py-12 sm:py-16 bg-brand-navy">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 sm:gap-8 lg:gap-10 px-4 sm:px-8 lg:px-20 max-w-7xl mx-auto">
               <div className="flex flex-col space-y-4 sm:space-y-6">
-                <img className="h-16 sm:h-20 lg:h-24" src={eliteplan} alt="ElitePlan" />
+                <img className="hidden sm:h-20 lg:h-24" src={eliteplan} alt="ElitePlan" />
                 <div className="flex items-start gap-2 text-brand-ivory">
                   <FaRegCopyright className="h-5 sm:h-6 mt-1 flex-shrink-0" />
                   <p className="text-sm sm:text-base">
