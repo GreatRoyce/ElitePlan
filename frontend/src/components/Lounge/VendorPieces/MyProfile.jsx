@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { FaLocationDot } from "react-icons/fa6";
 import api from "../../../utils/axios";
+import { log } from "../../../utils/logger";
 
 // ✅ Helper to construct full image URL
 const getImageUrl = (path) => {
@@ -75,7 +76,7 @@ export default function VendorProfile() {
       try {
         setLoading(true);
         const res = await api.get("/vendor-profile/me");
-        console.log("Fetched profile:", res.data);
+        log("Fetched profile:", res.data);
         
         if (res.data) {
           setFormData(res.data);
@@ -177,16 +178,6 @@ export default function VendorProfile() {
     }));
   };
 
-  // ✅ Handle multi-select changes
-  const handleMultiSelectChange = (fieldName, option, isChecked) => {
-    setDraftData((prev) => {
-      const currentArray = prev[fieldName] || [];
-      const updatedArray = isChecked
-        ? [...currentArray, option]
-        : currentArray.filter((item) => item !== option);
-      return { ...prev, [fieldName]: updatedArray };
-    });
-  };
 
   // ✅ Upload Profile Image
   const handleProfileImageUpload = async (e) => {
@@ -383,7 +374,7 @@ export default function VendorProfile() {
       }));
       
       // Send update to server
-      const res = await api.put("/vendor-profile/update/me", {
+      await api.put("/vendor-profile/update/me", {
         gallery: updatedGallery
       });
       
@@ -419,7 +410,7 @@ export default function VendorProfile() {
       }));
       
       // Send update to server
-      const res = await api.put("/vendor-profile/update/me", {
+      await api.put("/vendor-profile/update/me", {
         portfolioImages: updatedPortfolio
       });
       
@@ -472,10 +463,10 @@ export default function VendorProfile() {
         ...(draftData.teamSize && { teamSize: draftData.teamSize }),
       };
 
-      console.log("Saving profile data:", profileData);
+      log("Saving profile data:", profileData);
       
       const res = await api.put("/vendor-profile/update/me", profileData);
-      console.log("Profile saved successfully:", res.data);
+      log("Profile saved successfully:", res.data);
 
       setFormData(res.data);
       setDraftData(res.data);

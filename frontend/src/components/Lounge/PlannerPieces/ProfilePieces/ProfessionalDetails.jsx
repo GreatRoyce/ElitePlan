@@ -1,7 +1,7 @@
 import React from "react";
 import { Award } from "lucide-react";
 
-export default function ProfessionalDetails({ formData, setFormData, errors }) {
+export default function ProfessionalDetails({ formData, setFormData }) {
   const specializations = [
     "Weddings",
     "Corporate Events",

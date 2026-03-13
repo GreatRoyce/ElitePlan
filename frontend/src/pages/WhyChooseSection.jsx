@@ -37,10 +37,12 @@ const stats = [
 ];
 
 export default function WhyChooseSection() {
+  const MotionDiv = motion.div;
+
   return (
     <section className="py-16 mt-16 bg-gradient-to-br from-white to-gray-50">
       <div className="max-w-6xl mx-auto px-6 lg:px-8">
-        <motion.div
+        <MotionDiv
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
@@ -54,12 +56,12 @@ export default function WhyChooseSection() {
             Empowering event professionals with smart tools, trusted connections, and
             a platform built for excellence.
           </p>
-        </motion.div>
+        </MotionDiv>
 
         {/* Features */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {reasons.map((item, index) => (
-            <motion.div
+            <MotionDiv
               key={item.id}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -70,12 +72,12 @@ export default function WhyChooseSection() {
               <div className="text-brand-gold text-2xl mb-4">{item.icon}</div>
               <h3 className="font-semibold text-brand-navy mb-2">{item.title}</h3>
               <p className="text-sm text-gray-600">{item.text}</p>
-            </motion.div>
+            </MotionDiv>
           ))}
         </div>
 
         {/* Stats */}
-        <motion.div
+        <MotionDiv
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.6 }}
@@ -88,7 +90,7 @@ export default function WhyChooseSection() {
               <div className="text-sm text-gray-600 mt-1">{stat.label}</div>
             </div>
           ))}
-        </motion.div>
+        </MotionDiv>
       </div>
     </section>
   );

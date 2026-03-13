@@ -9,9 +9,9 @@ import {
   X,
   ZoomIn,
 } from "lucide-react";
-import api from "../../utils/axios";
-import { useAuth } from "../../context/authContext";
-import { useNavigate } from "react-router-dom";
+import api, { getApiErrorMessage } from "../../utils/axios";
+import { useToast } from "../../context/toastStore";
+import { log, warn, error as logError } from "../../utils/logger";
 
 function ClientPresence({ user, onClose, onProfileSaved }) {
   const [formData, setFormData] = useState({
@@ -30,29 +30,7 @@ function ClientPresence({ user, onClose, onProfileSaved }) {
   const [hasChanges, setHasChanges] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-
-  const { logout } = useAuth();
-  const navigate = useNavigate();
-
-  const handleLogout = async () => {
-    try {
-      await api.post("/auth/logout");
-    } catch (error) {
-      console.error("Logout failed:", error);
-    } finally {
-      logout();
-      navigate("/");
-    }
-  };
-
-  const handleLogoutWithDelay = async () => {
-    setIsLoggingOut(true);
-    setTimeout(async () => {
-      await handleLogout();
-      setIsLoggingOut(false);
-    }, 3000); // 3-second delay as requested
-  };
+  const toast = useToast();
 
   // Fetch profile on mount
   useEffect(() => {
@@ -68,13 +46,12 @@ function ClientPresence({ user, onClose, onProfileSaved }) {
             if (profile.imageCover.startsWith("http")) {
               preview = profile.imageCover;
             } else {
-              // Serve from backend port
               preview = `${window.location.protocol}//${window.location.hostname}:5000/${profile.imageCover}`;
             }
           }
 
-          console.log("Fetched profile:", profile);
-          console.log("Resolved image preview:", preview);
+          log("Fetched profile:", profile);
+          log("Resolved image preview:", preview);
 
           const loadedData = {
             fullName: profile.fullName || "",
@@ -91,35 +68,36 @@ function ClientPresence({ user, onClose, onProfileSaved }) {
           setOriginalData(loadedData);
         }
       } catch (err) {
-        console.warn("No existing client profile found", err);
-        setEditMode(true); // Enable edit mode if new profile
+        warn("No existing client profile found", err);
+        setEditMode(true);
       }
     };
     fetchProfile();
   }, [user]);
 
-  // Detect changes
   useEffect(() => {
     setHasChanges(JSON.stringify(formData) !== JSON.stringify(originalData));
   }, [formData, originalData]);
 
-  // Handle input changes
   const handleChange = (e) => {
     if (!editMode) return;
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Handle image file selection
   const handleImageChange = (e) => {
     if (!editMode) return;
 
     const file = e.target.files[0];
     if (!file) return;
-    if (!file.type.startsWith("image/"))
-      return alert("Please select an image file");
-    if (file.size > 5 * 1024 * 1024)
-      return alert("Image must be smaller than 5MB");
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be smaller than 5MB");
+      return;
+    }
 
     if (formData.imagePreview && formData.imagePreview.startsWith("blob:")) {
       URL.revokeObjectURL(formData.imagePreview);
@@ -132,7 +110,6 @@ function ClientPresence({ user, onClose, onProfileSaved }) {
     }));
   };
 
-  // Submit / save profile
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!hasChanges && editMode) return;
@@ -165,10 +142,9 @@ function ClientPresence({ user, onClose, onProfileSaved }) {
       }
 
       if (res.data.success) {
-        alert("Profile saved successfully!");
+        toast.success("Profile saved successfully!");
         const profile = res.data.data;
 
-        // Correct preview after saving
         let preview = "";
         if (profile.imageCover) {
           if (profile.imageCover.startsWith("http")) {
@@ -188,17 +164,16 @@ function ClientPresence({ user, onClose, onProfileSaved }) {
         setFormData(updatedData);
         setOriginalData(updatedData);
         setEditMode(false);
-        onProfileSaved?.(); // ✅ Notify the parent component to refresh its data
+        onProfileSaved?.();
       }
     } catch (err) {
-      console.error("Error saving profile:", err);
-      alert("Error saving profile");
+      logError("Error saving profile:", err);
+      toast.error(getApiErrorMessage(err, "Error saving profile"));
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Cancel / reset
   const handleCancel = () => {
     if (editMode && hasChanges) {
       const confirmCancel = window.confirm(
@@ -242,8 +217,9 @@ function ClientPresence({ user, onClose, onProfileSaved }) {
     if (
       monthDiff < 0 ||
       (monthDiff === 0 && today.getDate() < birthDate.getDate())
-    )
+    ) {
       age--;
+    }
     return age;
   };
 
@@ -257,13 +233,13 @@ function ClientPresence({ user, onClose, onProfileSaved }) {
 
   return (
     <>
-      {/* Image Modal */}
       {showImageModal && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="relative max-w-4xl max-h-full">
             <button
               onClick={() => setShowImageModal(false)}
               className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
+              aria-label="Close image preview"
             >
               <X size={24} />
             </button>
@@ -280,7 +256,6 @@ function ClientPresence({ user, onClose, onProfileSaved }) {
       )}
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-2">
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">My Profile</h1>
           <p className="text-gray-600">
@@ -304,7 +279,6 @@ function ClientPresence({ user, onClose, onProfileSaved }) {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Profile Card */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl border border-gray-200 p-6 sticky top-8">
               <div className="text-center mb-6">
@@ -372,7 +346,6 @@ function ClientPresence({ user, onClose, onProfileSaved }) {
                 )}
               </div>
 
-              {/* Edit Toggle Button */}
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <button
                   type="button"
@@ -385,7 +358,6 @@ function ClientPresence({ user, onClose, onProfileSaved }) {
             </div>
           </div>
 
-          {/* Form Section */}
           <div className="lg:col-span-2">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="bg-white rounded-2xl border border-gray-200 p-6">
@@ -472,7 +444,6 @@ function ClientPresence({ user, onClose, onProfileSaved }) {
                 </div>
               </div>
 
-              {/* Action Buttons */}
               <div className="flex justify-between items-center pt-4">
                 <div className="text-sm text-gray-500">
                   {hasChanges && editMode && (

@@ -11,7 +11,7 @@ import {
   Loader2,
 } from "lucide-react";
 import api from "../utils/axios";
-import { useAuth } from "../context/authContext";
+import { useAuth } from "../context/authStore";
 
 export default function ConsultForm() {
   const { user } = useAuth();
@@ -36,7 +36,6 @@ export default function ConsultForm() {
     contactMethod: "email",
   });
 
-  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [messageType, setMessageType] = useState("info");
   const [countdown, setCountdown] = useState(null);

@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
-const ClientSuite = ({ user }) => {
+const ClientSuite = () => {
   // Mock data - replace with API calls
   const upcomingEvents = [
     { id: 1, name: "My Wedding", date: "2024-12-15", planner: "Luxe Planners" },
@@ -22,12 +22,12 @@ const ClientSuite = ({ user }) => {
   const bookmarkedProfessionals = 5;
   const unreadMessages = 2;
 
-  const StatCard = ({ icon: Icon, label, value, color }) => (
+  const StatCard = ({ icon, label, value, color }) => (
     <div className="bg-white/60 backdrop-blur-sm p-6 rounded-2xl border border-gray-200/80 shadow-sm flex items-center gap-5">
       <div
         className={`w-12 h-12 rounded-xl flex items-center justify-center ${color}`}
       >
-        <Icon className="w-6 h-6 text-white" />
+        {React.createElement(icon, { className: "w-6 h-6 text-white" })}
       </div>
       <div>
         <p className="text-2xl font-bold text-gray-800">{value}</p>
@@ -128,12 +128,12 @@ const ClientSuite = ({ user }) => {
   );
 };
 
-const ActionLink = ({ to, icon: Icon, label }) => (
+const ActionLink = ({ to, icon, label }) => (
   <Link
     to={to}
     className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-blue-400 hover:bg-white transition-all"
   >
-    <Icon className="w-5 h-5 text-blue-600" />
+    {React.createElement(icon, { className: "w-5 h-5 text-blue-600" })}
     <span className="font-semibold text-gray-700">{label}</span>
   </Link>
 );

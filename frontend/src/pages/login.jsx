@@ -53,16 +53,6 @@ function Login({ onLogin }) {
     }
   };
 
-  const goToPrevious = () =>
-    setCurrentImageIndex((prev) =>
-      prev === 0 ? portraitsFlip.length - 1 : prev - 1
-    );
-
-  const goToNext = () =>
-    setCurrentImageIndex((prev) =>
-      prev === portraitsFlip.length - 1 ? 0 : prev + 1
-    );
-
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-black/40 backdrop-blur-md overflow-hidden">
       {/* Slightly blurred background overlay */}

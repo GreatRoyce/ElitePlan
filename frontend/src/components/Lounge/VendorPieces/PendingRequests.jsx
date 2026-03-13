@@ -1,29 +1,26 @@
-// src/components/Lounge/VendorPieces/PendingRequests.jsx
 import React, { useEffect, useState, useRef } from "react";
 import { Check, X, User, Calendar, Loader2, MapPin, Users } from "lucide-react";
 import api from "../../../utils/axios";
-import squeeze from "../../../../src/assets/edge.png";
+import squeeze from "../../../assets/squeeze.png";
 import { io } from "socket.io-client";
+import { log, error as logError } from "../../../utils/logger";
 
-const SOCKET_SERVER_URL = "http://localhost:3000"; // Update if needed
+const SOCKET_SERVER_URL = "http://localhost:3000";
 
 export default function PendingRequests({ vendorId }) {
   const [requests, setRequests] = useState([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
-  const [actionType, setActionType] = useState(null); // "approve" or "decline"
+  const [actionType, setActionType] = useState(null);
 
   const socketRef = useRef(null);
 
-  // ===============================
-  // 1️⃣ Connect Socket.IO for real-time messages
-  // ===============================
+  // Step 1: Connect Socket.IO for real-time messages
   useEffect(() => {
     socketRef.current = io(SOCKET_SERVER_URL, { autoConnect: false });
     const socket = socketRef.current;
     socket.connect();
 
-    // Join vendor room
     socket.emit("join", { userId: vendorId, role: "vendor" });
 
     return () => {
@@ -31,18 +28,16 @@ export default function PendingRequests({ vendorId }) {
     };
   }, [vendorId]);
 
-  // ===============================
-  // 2️⃣ Fetch pending requests
-  // ===============================
+  // Step 2: Fetch pending requests
   useEffect(() => {
     const fetchPending = async () => {
       setLoadingRequests(true);
       try {
         const res = await api.get("/consultation/mine");
-        console.log("✅ Vendor fetched pending requests:", res.data);
+        log("Vendor fetched pending requests:", res.data);
         setRequests(res.data || []);
       } catch (err) {
-        console.error("❌ Error fetching pending requests:", err);
+        logError("Error fetching pending requests:", err);
         setRequests([]);
       } finally {
         setLoadingRequests(false);
@@ -51,24 +46,20 @@ export default function PendingRequests({ vendorId }) {
     fetchPending();
   }, []);
 
-  // ===============================
-  // 3️⃣ Handle approve/decline
-  // ===============================
+  // Step 3: Handle approve/decline
   const handleDecision = async (id, status) => {
     try {
-      console.log(`🚀 Updating request ${id} -> ${status}`);
+      log(`Updating request ${id} -> ${status}`);
       const res = await api.patch(`/consultation/${id}/status`, { status });
 
-      // Remove request from UI
       setRequests((prev) => prev.filter((req) => req._id !== id));
       setSelectedRequest(null);
       setActionType(null);
-      console.log(`✅ Request ${id} updated.`);
+      log(`Request ${id} updated.`);
 
       if (status === "approved") {
         const request = res.data.consultation;
 
-        // Determine client ID
         const clientId =
           request.client?._id ||
           request.user?._id ||
@@ -76,7 +67,6 @@ export default function PendingRequests({ vendorId }) {
             ? request.targetUser?._id
             : undefined);
 
-        // Determine vendor ID
         const vendorId =
           request.vendor?._id ||
           request.user?._id ||
@@ -84,7 +74,6 @@ export default function PendingRequests({ vendorId }) {
             ? request.targetUser?._id
             : undefined);
 
-        // Determine sender/recipient models
         const senderModel =
           request.targetType === "VendorProfile"
             ? "VendorProfile"
@@ -96,8 +85,7 @@ export default function PendingRequests({ vendorId }) {
             request.client?.name || request.user?.username || "there"
           }, your request has been approved!`;
 
-          // Save message in backend
-          const messageRes = await api.post("/messages", {
+          await api.post("/messages", {
             sender: vendorId,
             senderModel,
             recipientId: clientId,
@@ -105,20 +93,19 @@ export default function PendingRequests({ vendorId }) {
             text: messageText,
           });
 
-          console.log(`📩 Auto-message saved for client ${clientId}`);
+          log(`Auto-message saved for client ${clientId}`);
 
-          // Emit real-time message via socket
           socketRef.current.emit("send_message", {
             fromUserId: vendorId,
             toUserId: clientId,
             message: messageText,
           });
 
-          console.log(`⚡ Auto-message emitted via Socket.IO`);
+          log("Auto-message emitted via Socket.IO");
         }
       }
-    } catch (error) {
-      console.error(`❌ Failed to ${status} request:`, error);
+    } catch (err) {
+      logError(`Failed to ${status} request:`, err);
     }
   };
 
@@ -238,9 +225,6 @@ export default function PendingRequests({ vendorId }) {
   );
 }
 
-// =========================
-// RequestCard Component
-// =========================
 function RequestCard({ request, onSelect }) {
   const {
     client,
@@ -258,7 +242,9 @@ function RequestCard({ request, onSelect }) {
 
   const formatLocation = (location) =>
     location
-      ? [location.city, location.state, location.country].filter(Boolean).join(", ")
+      ? [location.city, location.state, location.country]
+          .filter(Boolean)
+          .join(", ")
       : null;
 
   const formatGuests = (guests) =>
@@ -267,7 +253,7 @@ function RequestCard({ request, onSelect }) {
   return (
     <div
       className="border border-gray-200 rounded-2xl p-5 bg-cover bg-no-repeat bg-center shadow-sm bg-white hover:shadow-md transition-all duration-300 flex flex-col h-full min-h-[400px]"
-      style={{ backgroundImage: `url(${squeeze})` }}
+      // style={{ backgroundImage: `url(${squeeze})` }}
     >
       <div className="flex items-center justify-between mb-3 flex-shrink-0">
         <h3 className="font-semibold text-brand-navy text-lg leading-tight">
@@ -353,7 +339,7 @@ function RequestCard({ request, onSelect }) {
 
       <div className="flex items-center justify-between mt-4 gap-2 pt-3 border-t border-gray-200 flex-shrink-0">
         <button
-          style={{ backgroundImage: `url(${sqz})` }}
+          style={{ backgroundImage: `url(${squeeze})` }}
           onClick={() => onSelect("approve")}
           className="flex items-center gap-2 bg-contain border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 font-medium text-sm px-2 py-2 rounded-lg flex-1 justify-center transition-all duration-200"
         >
@@ -361,7 +347,7 @@ function RequestCard({ request, onSelect }) {
         </button>
         <div className="w-2"></div>
         <button
-          style={{ backgroundImage: `url(${sqz})` }}
+          style={{ backgroundImage: `url(${squeeze})` }}
           onClick={() => onSelect("decline")}
           className="flex items-center gap-1 bg-contain border-2 border-red-500 text-red-600 hover:bg-red-50 font-medium text-sm px-2 py-2 rounded-lg flex-1 justify-center transition-all duration-200"
         >

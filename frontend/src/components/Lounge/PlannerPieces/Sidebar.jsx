@@ -13,7 +13,6 @@ import {
 
 const Sidebar = ({
   companyName,
-  user,
   counts,
   activeSection,
   setActiveSection,

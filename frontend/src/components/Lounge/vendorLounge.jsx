@@ -1,4 +1,3 @@
-// src/components/VendorLounge.jsx
 import React, {
   useState,
   useEffect,
@@ -6,21 +5,20 @@ import React, {
   useCallback,
   useRef,
 } from "react";
-import { useAuth } from "../../context/authContext";
+import { useAuth } from "../../context/authStore";
 import io from "socket.io-client";
-import api from "../../utils/axios";
+import api, { getApiErrorMessage } from "../../utils/axios";
 import { useNavigate } from "react-router-dom";
+import { log, error as logError } from "../../utils/logger";
 
-// Components
 import Sidebar from "./VendorPieces/Sidebar";
 import Topbar from "./VendorPieces/Topbar";
 import VendorDashboard from "./VendorPieces/VendorDashboard";
 import PendingRequests from "./VendorPieces/PendingRequests";
 import MyProfile from "./VendorPieces/MyProfile";
-import MessagePanel from "./PlannerPieces/MessagePanel"; // Re-using the robust message panel
+import MessagePanel from "./PlannerPieces/MessagePanel";
 import NotificationCenter from "../../pages/NotificationCenter";
 
-// Loading Components
 const LoadingSpinner = () => (
   <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-gray-50 to-blue-50">
     <div className="relative">
@@ -95,16 +93,15 @@ export default function VendorLounge() {
 
   const socketRef = useRef(null);
   const navigate = useNavigate();
-  const { user, logout } = useAuth(); // Get user from auth context
+  const { user, logout } = useAuth();
 
-  // Fetch vendor dashboard including notifications
   const fetchDashboard = useCallback(async () => {
     try {
       setError(null);
       if (!refreshing) setLoading(true);
 
-      const res = await api.get("/vendor-dashboard"); // Use the new comprehensive endpoint
-      console.log("Vendor dashboard data:", res.data);
+      const res = await api.get("/vendor-dashboard");
+      log("Vendor dashboard data:", res.data);
 
       if (res.data.success) {
         setDashboard(res.data.data);
@@ -113,10 +110,8 @@ export default function VendorLounge() {
         throw new Error("Failed to load dashboard data");
       }
     } catch (err) {
-      const errorMessage =
-        err.response?.data?.message || "Error fetching vendor data";
-      setError(errorMessage);
-      console.error("Dashboard fetch error:", err);
+      setError(getApiErrorMessage(err, "Error fetching vendor data"));
+      logError("Dashboard fetch error:", err);
 
       if (err.response?.status === 404) {
         setActiveSection("profile");
@@ -131,13 +126,10 @@ export default function VendorLounge() {
     fetchDashboard();
   }, [fetchDashboard]);
 
-  // Real-time notification listener
   useEffect(() => {
     if (!user?._id) return;
 
-    // Use a ref to hold the socket instance to prevent re-connections on re-renders
     if (!socketRef.current) {
-      // Use environment variable for the backend URL
       const backendUrl =
         import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
       socketRef.current = io(backendUrl, { withCredentials: true });
@@ -145,20 +137,28 @@ export default function VendorLounge() {
 
     const socket = socketRef.current;
 
-    socket.on("connect", () => {
-      console.log("✅ Connected to WebSocket server");
+    const handleConnect = () => {
+      log("Vendor connected to WebSocket server");
       socket.emit("join", { userId: user._id, role: user.role });
-    });
+    };
 
-    socket.on("new_notification", (notification) => {
-      console.log("🎉 Received new notification:", notification);
+    const handleNotification = (notification) => {
+      log("Vendor received new notification:", notification);
       setDashboard((prev) => ({
         ...prev,
         notifications: [notification, ...(prev?.notifications || [])],
       }));
-    });
+    };
 
-    return () => socket.off("new_notification");
+    socket.on("connect", handleConnect);
+    socket.on("new_notification", handleNotification);
+
+    return () => {
+      socket.off("connect", handleConnect);
+      socket.off("new_notification", handleNotification);
+      socket.disconnect();
+      socketRef.current = null;
+    };
   }, [user]);
 
   const handleRefresh = useCallback(() => {
@@ -169,11 +169,11 @@ export default function VendorLounge() {
   const handleLogout = async () => {
     try {
       await api.post("/auth/logout");
-    } catch (error) {
-      console.error("Logout failed:", error);
+    } catch (err) {
+      logError("Logout failed:", err);
     } finally {
       socketRef.current?.disconnect();
-      logout(); // This will clear context
+      logout();
       navigate("/");
     }
   };
@@ -186,7 +186,6 @@ export default function VendorLounge() {
     }, 1500);
   };
 
-  // Filter events with better search
   const filteredEvents = useMemo(() => {
     if (!dashboard?.assignedEvents) return [];
 
@@ -203,7 +202,6 @@ export default function VendorLounge() {
     });
   }, [dashboard?.assignedEvents, searchTerm, activeFilter]);
 
-  // Compute performance metrics with fallbacks
   const performanceMetrics = useMemo(() => {
     if (!dashboard) return null;
 
@@ -229,7 +227,6 @@ export default function VendorLounge() {
     };
   }, [dashboard]);
 
-  // Consolidate counts for the sidebar
   const counts = useMemo(
     () => ({
       requests: dashboard?.pendingRequests?.length || 0,
@@ -240,11 +237,9 @@ export default function VendorLounge() {
     [dashboard, unreadNotificationsCount, unreadMessagesCount]
   );
 
-  // Handle section changes with smooth transitions
   const handleSectionChange = useCallback(
     (section) => {
       setActiveSection(section);
-      // Close mobile sidebar when a section is selected
       if (isMobileOpen) {
         setIsMobileOpen(false);
       }
@@ -252,11 +247,10 @@ export default function VendorLounge() {
     [isMobileOpen]
   );
 
-  // Save handler passed to MyProfile to update the dashboard state directly
   const handleProfileSave = useCallback((updatedProfileData) => {
     setDashboard((prevDashboard) => ({
       ...prevDashboard,
-      ...updatedProfileData, // Merge the updated profile data into the dashboard
+      ...updatedProfileData,
     }));
   }, []);
 
@@ -282,16 +276,15 @@ export default function VendorLounge() {
         case "messages":
           return (
             <MessagePanel
-              plannerId={user?._id} // Prop is named plannerId, but it's just the user's ID
+              plannerId={user?._id}
               onUnreadCountChange={setUnreadMessagesCount}
-              // The panel will fetch its own conversations
             />
           );
         case "profile":
           return (
             <MyProfile
               profileData={dashboard}
-              onProfileSaved={handleProfileSave} // Use the new save handler
+              onProfileSaved={handleProfileSave}
             />
           );
         case "notifications":
@@ -314,10 +307,8 @@ export default function VendorLounge() {
     return <div className="animate-fadeIn">{content}</div>;
   };
 
-  // Show loading state
   if (loading && !refreshing) return <LoadingSpinner />;
 
-  // Show error state (unless we're on profile section which might handle its own errors)
   if (error && activeSection !== "profile") {
     return (
       <ErrorState error={error} onRetry={handleRefresh} loading={refreshing} />
@@ -338,7 +329,6 @@ export default function VendorLounge() {
         vendorData={dashboard}
       />
 
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col lg:ml-0 min-w-0 transition-all duration-300">
         <Topbar
           dashboard={dashboard}
@@ -356,12 +346,10 @@ export default function VendorLounge() {
           onMenuToggle={() => setIsMobileOpen(!isMobileOpen)}
         />
 
-        {/* Main Content with enhanced styling */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto w-full">{renderContent()}</div>
         </main>
 
-        {/* Refresh Indicator */}
         {refreshing && (
           <div className="fixed bottom-4 right-4 bg-brand-navy text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-pulse">
             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -370,7 +358,6 @@ export default function VendorLounge() {
         )}
       </div>
 
-      {/* Mobile Overlay */}
       {isMobileOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"

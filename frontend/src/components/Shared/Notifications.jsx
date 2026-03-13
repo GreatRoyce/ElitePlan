@@ -1,4 +1,3 @@
-// src/components/Lounge/Shared/Notifications.jsx
 import React, {
   useEffect,
   useState,
@@ -8,8 +7,9 @@ import React, {
 } from "react";
 import { Bell, Loader2, CheckCircle2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import api from "../../utils/axios";
+import api, { getApiErrorMessage } from "../../utils/axios";
 import { Link } from "react-router-dom";
+import { log, error as logError } from "../../utils/logger";
 
 export default function Notifications({
   initialNotifications = [],
@@ -22,24 +22,22 @@ export default function Notifications({
   const [open, setOpen] = useState(false);
   const [error, setError] = useState(null);
   const [markingRead, setMarkingRead] = useState(new Set());
-  const [hasBeenViewed, setHasBeenViewed] = useState(false); // Tracks if user opened dropdown
+  const [hasBeenViewed, setHasBeenViewed] = useState(false);
   const wrapperRef = useRef(null);
 
-  // ========= UNREAD COUNT =========
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.isRead).length + pendingRequestsCount,
     [notifications, pendingRequestsCount]
   );
 
-  // ========= FETCH NOTIFICATIONS =========
   const fetchNotifications = useCallback(
     async (showLoading = false) => {
       if (showLoading) setLoading(true);
       setError(null);
 
       try {
-        const res = await api.get("/notifications/mine"); // ✅ Correct endpoint
-        console.log("What is it fetching:", res.data);
+        const res = await api.get("/notifications/mine");
+        log("Notifications response:", res.data);
 
         if (res.data.success) {
           const newNotifications = res.data.notifications || [];
@@ -51,8 +49,8 @@ export default function Notifications({
           throw new Error(res.data.message || "Failed to fetch notifications");
         }
       } catch (err) {
-        console.error("❌ Error fetching notifications:", err);
-        setError(err.response?.data?.message || "Failed to load notifications");
+        logError("Error fetching notifications:", err);
+        setError(getApiErrorMessage(err, "Failed to load notifications"));
         if (showLoading) setNotifications([]);
       } finally {
         setLoading(false);
@@ -61,7 +59,6 @@ export default function Notifications({
     [notifications.length]
   );
 
-  // ========= MARK SINGLE AS READ =========
   const markAsRead = useCallback(
     async (notificationId) => {
       if (markingRead.has(notificationId)) return;
@@ -76,7 +73,7 @@ export default function Notifications({
           )
         );
       } catch (err) {
-        console.error("❌ Error marking notification as read:", err);
+        logError("Error marking notification as read:", err);
         fetchNotifications();
       } finally {
         setMarkingRead((prev) => {
@@ -89,25 +86,22 @@ export default function Notifications({
     [markingRead, fetchNotifications]
   );
 
-  // ========= MARK ALL AS READ =========
   const markAllAsRead = useCallback(async () => {
     const unreadIds = notifications.filter((n) => !n.isRead).map((n) => n._id);
     if (!unreadIds.length) return;
 
-    // Optimistic update
     setNotifications((prev) =>
       prev.map((n) => (unreadIds.includes(n._id) ? { ...n, isRead: true } : n))
     );
 
     try {
-      await api.patch("/notifications/mark-all-read"); // ✅ Correct endpoint
+      await api.patch("/notifications/mark-all-read");
     } catch (err) {
-      console.error("❌ Error marking all as read:", err);
+      logError("Error marking all as read:", err);
       fetchNotifications();
     }
   }, [notifications, fetchNotifications]);
 
-  // ========= HANDLE NOTIFICATION CLICK =========
   const handleNotificationClick = useCallback(
     async (notification, targetSection) => {
       if (!notification.isRead) await markAsRead(notification._id);
@@ -123,24 +117,21 @@ export default function Notifications({
     [markAsRead, onRefreshData, setActiveSection]
   );
 
-  // ========= EFFECTS =========
-  // Initial fetch
   useEffect(() => {
     if (!initialNotifications.length) fetchNotifications(true);
   }, [fetchNotifications, initialNotifications.length]);
 
-  // Periodic refresh when dropdown is open
   useEffect(() => {
     if (!open) return;
     const interval = setInterval(() => fetchNotifications(), 30000);
     return () => clearInterval(interval);
   }, [open, fetchNotifications]);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target))
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
         setOpen(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -151,7 +142,6 @@ export default function Notifications({
     if (!open) setHasBeenViewed(true);
   };
 
-  // ========= RENDER NOTIFICATION ITEM =========
   const renderNotificationItem = useCallback(
     (notification) => {
       const senderName =
@@ -211,10 +201,8 @@ export default function Notifications({
     [handleNotificationClick, markingRead]
   );
 
-  // ========= RENDER =========
   return (
     <div className="relative" ref={wrapperRef}>
-      {/* Bell Icon */}
       <button
         onClick={handleBellClick}
         className={`relative p-2 rounded-lg transition-all duration-200 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 ${
@@ -236,10 +224,8 @@ export default function Notifications({
         )}
       </button>
 
-      {/* Dropdown */}
       {open && (
         <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-lg border border-gray-200 z-50 animate-fadeIn">
-          {/* Header */}
           <div className="p-4 border-b border-gray-100 flex justify-between items-center">
             <h3 className="font-semibold text-brand-navy text-lg">
               Notifications
@@ -259,7 +245,6 @@ export default function Notifications({
             )}
           </div>
 
-          {/* Notifications List */}
           <div className="max-h-96 overflow-y-auto">
             {loading ? (
               <div className="flex flex-col items-center justify-center py-8">
@@ -294,7 +279,6 @@ export default function Notifications({
             )}
           </div>
 
-          {/* Footer */}
           {notifications.length > 0 && !loading && !error && (
             <div className="p-3 border-t border-gray-100 bg-gray-50 rounded-b-xl">
               <Link

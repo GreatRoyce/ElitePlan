@@ -8,8 +8,6 @@ export default function Topbar({
   handleRefresh,
   refreshing,
   handleLogout,
-  activeSection,
-  setActiveSection,
 }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileRef = useRef(null);

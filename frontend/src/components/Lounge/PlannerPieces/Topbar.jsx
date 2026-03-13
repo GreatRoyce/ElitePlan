@@ -3,8 +3,6 @@ import Notifications from "../../Shared/Notifications"; // ✅ shared import
 
 export default function Topbar({
   companyName,
-  initialNotifications,
-  onUnreadCountChange,
   pendingRequestsCount,
   setActiveSection,
 }) {

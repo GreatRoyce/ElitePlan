@@ -4,7 +4,6 @@ export default function PersonalDetails({
   formData,
   setFormData,
   errors,
-  countries,
   phoneCode,
   phoneNumber,
   setPhoneCode,

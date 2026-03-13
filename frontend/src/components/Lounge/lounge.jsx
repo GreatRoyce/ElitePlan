@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useAuth } from "../../context/authContext";
+import React from "react";
+import { useAuth } from "../../context/authStore";
 import ClientLounge from "./clientLounge";
 import VendorLounge from "./vendorLounge";
 import PlannerLounge from "./plannerLounge";

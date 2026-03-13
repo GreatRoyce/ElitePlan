@@ -1,21 +1,17 @@
-// src/components/PlannerPieces/PlannerLounge.jsx
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import io from "socket.io-client";
-import { useAuth } from "../../context/authContext";
-import api from "../../utils/axios";
+import { useAuth } from "../../context/authStore";
+import api, { getApiErrorMessage } from "../../utils/axios";
+import { log, error as logError } from "../../utils/logger";
 
-// Components
 import Sidebar from "./PlannerPieces/Sidebar";
 import Overview from "./PlannerPieces/Overview";
 import DashboardCards from "./PlannerPieces/DashboardCards";
-import Notifications from "../Shared/Notifications";
 import PendingRequests from "./PlannerPieces/PendingRequests";
 import Messages from "./PlannerPieces/MessagePanel";
 import Profile from "./PlannerPieces/Profile";
 import NotificationCenter from "../../pages/NotificationCenter";
-
-// Topbar is now self-contained with Notifications
 import Topbar from "./PlannerPieces/Topbar";
 
 export default function PlannerLounge() {
@@ -25,7 +21,6 @@ export default function PlannerLounge() {
   const [activeSection, setActiveSection] = useState("overview");
   const { user, logout } = useAuth();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [pendingRequests, setPendingRequests] = useState([]);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -37,17 +32,14 @@ export default function PlannerLounge() {
     try {
       const res = await api.get("/planner-dashboard");
       if (res.data.success) {
-        console.log(
-          "✅ Planner Dashboard Data Received:",
-          res.data.data.pendingRequests
-        );
+        log("Planner dashboard data received:", res.data.data.pendingRequests);
         setDashboard(res.data.data);
       } else {
         setError("Failed to load planner dashboard.");
       }
     } catch (err) {
-      console.error("❌ Error fetching planner dashboard:", err);
-      setError("Server error while fetching dashboard.");
+      logError("Error fetching planner dashboard:", err);
+      setError(getApiErrorMessage(err, "Server error while fetching dashboard."));
     } finally {
       setLoading(false);
     }
@@ -57,11 +49,9 @@ export default function PlannerLounge() {
     fetchDashboard();
   }, [fetchDashboard]);
 
-  // Real-time notification listener
   useEffect(() => {
     if (!user?._id) return;
 
-    // Use a ref to hold the socket instance
     if (!socketRef.current) {
       const backendUrl =
         import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
@@ -70,38 +60,42 @@ export default function PlannerLounge() {
 
     const socket = socketRef.current;
 
-    socket.on("connect", () => {
-      console.log("✅ Planner connected to WebSocket server");
+    const handleConnect = () => {
+      log("Planner connected to WebSocket server");
       socket.emit("join", { userId: user._id, role: user.role });
-    });
+    };
 
-    // Listen for new notifications or requests
-    socket.on("new_notification", (notification) => {
-      console.log("🎉 Planner received new notification:", notification);
-      // Refresh dashboard data to get the latest state
+    const handleNotification = () => {
+      log("Planner received new notification");
       fetchDashboard();
-    });
+    };
 
-    // Cleanup on component unmount
+    socket.on("connect", handleConnect);
+    socket.on("new_notification", handleNotification);
+
     return () => {
-      socket.off("new_notification");
+      socket.off("connect", handleConnect);
+      socket.off("new_notification", handleNotification);
       socket.disconnect();
+      socketRef.current = null;
     };
   }, [user, fetchDashboard]);
 
-  if (loading)
+  if (loading) {
     return (
       <div className="flex justify-center items-center h-screen text-brand-navy">
         Loading Planner Lounge...
       </div>
     );
+  }
 
-  if (error)
+  if (error) {
     return (
       <div className="flex justify-center items-center h-screen text-red-600">
         {error}
       </div>
     );
+  }
 
   const companyName = dashboard?.companyName || "ElitePlan";
   const plannerProfile = dashboard?.plannerProfile || null;
@@ -113,7 +107,6 @@ export default function PlannerLounge() {
     notifications: unreadNotificationsCount,
   };
 
-  // Save handler passed to Profile
   const handleProfileSave = (updatedProfile) => {
     setDashboard((prev) => ({
       ...prev,
@@ -156,8 +149,8 @@ export default function PlannerLounge() {
   const handleLogout = async () => {
     try {
       await api.post("/auth/logout");
-    } catch (error) {
-      console.error("Logout API call failed:", error);
+    } catch (err) {
+      logError("Logout API call failed:", err);
     } finally {
       socketRef.current?.disconnect();
       logout();
@@ -167,7 +160,6 @@ export default function PlannerLounge() {
 
   const handleLogoutWithDelay = async () => {
     setIsLoggingOut(true);
-    // User requested 3000ms delay
     setTimeout(async () => {
       await handleLogout();
       setIsLoggingOut(false);
@@ -176,7 +168,6 @@ export default function PlannerLounge() {
 
   return (
     <div className="flex h-screen bg-brand-ivory text-brand-charcoal">
-      {/* Sidebar */}
       <Sidebar
         companyName={companyName}
         user={plannerProfile}
@@ -190,8 +181,7 @@ export default function PlannerLounge() {
         unreadNotificationsCount={unreadNotificationsCount}
       />
 
-      {/* Main Section */}
-      <div 
+      <div
         className="flex-1 flex flex-col min-h-0"
         onClick={() => {
           if (isMobileOpen) setIsMobileOpen(false);
@@ -206,7 +196,6 @@ export default function PlannerLounge() {
           setActiveSection={setActiveSection}
         />
 
-        {/* Main content area with scrollable container */}
         <main className="flex-1 overflow-y-auto p-6 space-y-8">
           {renderContent()}
         </main>

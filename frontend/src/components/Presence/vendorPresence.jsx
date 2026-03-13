@@ -12,7 +12,7 @@ import {
   Calendar,
 } from "lucide-react";
 
-function VendorPresence({ user }) {
+function VendorPresence() {
   // Mock vendor data — replace later with API call or props
   const vendor = {
     businessName: "Royce Events & Decor",
@@ -84,10 +84,10 @@ function VendorPresence({ user }) {
   );
 
   // Section header component
-  const SectionHeader = ({ icon: Icon, title, subtitle }) => (
+  const SectionHeader = ({ icon, title, subtitle }) => (
     <div className="mb-4">
       <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-        <Icon className="w-5 h-5 text-brand-navy" />
+        {React.createElement(icon, { className: "w-5 h-5 text-brand-navy" })}
         {title}
       </h3>
       {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
@@ -95,7 +95,7 @@ function VendorPresence({ user }) {
   );
 
   // Social link component
-  const SocialLink = ({ href, icon: Icon, label, color }) => (
+  const SocialLink = ({ href, icon, label, color }) => (
     <a
       href={href}
       target="_blank"
@@ -104,7 +104,7 @@ function VendorPresence({ user }) {
         color || "text-gray-700 border-gray-200 hover:border-gray-300"
       }`}
     >
-      <Icon className="w-4 h-4" />
+      {React.createElement(icon, { className: "w-4 h-4" })}
       <span className="text-sm font-medium">{label}</span>
     </a>
   );

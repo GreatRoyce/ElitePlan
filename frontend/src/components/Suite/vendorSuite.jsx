@@ -2,7 +2,7 @@ import React from "react";
 import { BarChart3, Briefcase, Mail, UserCheck, Edit } from "lucide-react";
 import { Link } from "react-router-dom";
 
-const VendorSuite = ({ user }) => {
+const VendorSuite = () => {
   // Mock data - replace with API calls
   const stats = {
     profileViews: 1250,
@@ -26,11 +26,11 @@ const VendorSuite = ({ user }) => {
     },
   ];
 
-  const StatCard = ({ icon: Icon, label, value, color }) => (
+  const StatCard = ({ icon, label, value, color }) => (
     <div className="bg-white/60 backdrop-blur-sm p-6 rounded-2xl border border-gray-200/80 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm font-medium text-gray-500">{label}</p>
-        <Icon className={`w-5 h-5 ${color}`} />
+        {React.createElement(icon, { className: `w-5 h-5 ${color}` })}
       </div>
       <p className="text-3xl font-bold text-gray-800">{value}</p>
     </div>
@@ -138,12 +138,12 @@ const VendorSuite = ({ user }) => {
   );
 };
 
-const ActionLink = ({ to, icon: Icon, label }) => (
+const ActionLink = ({ to, icon, label }) => (
   <Link
     to={to}
     className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-emerald-400 hover:bg-white transition-all"
   >
-    <Icon className="w-5 h-5 text-emerald-600" />
+    {React.createElement(icon, { className: "w-5 h-5 text-emerald-600" })}
     <span className="font-semibold text-gray-700">{label}</span>
   </Link>
 );

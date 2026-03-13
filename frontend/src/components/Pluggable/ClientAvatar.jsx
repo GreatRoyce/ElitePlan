@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../../utils/axios";
+import { warn, error as logError } from "../../utils/logger";
 
 function ClientAvatar({ userId }) {
   const [profile, setProfile] = useState(null);
@@ -15,13 +16,11 @@ function ClientAvatar({ userId }) {
         if (res.data.success && res.data.data) {
           const profileData = res.data.data;
 
-          // Safe image preview
           let preview = "";
           if (profileData.imageCover) {
             if (profileData.imageCover.startsWith("http")) {
               preview = profileData.imageCover;
             } else {
-              // Dynamically resolve backend URL
               preview = `${window.location.protocol}//${window.location.hostname}:5000/${profileData.imageCover}`;
             }
           }
@@ -29,10 +28,10 @@ function ClientAvatar({ userId }) {
           setProfile(profileData);
           setImagePreview(preview);
         } else {
-          console.warn("Failed to load profile:", res.data.message);
+          warn("Failed to load profile:", res.data.message);
         }
-      } catch (error) {
-        console.error("Error fetching client profile:", error);
+      } catch (err) {
+        logError("Error fetching client profile:", err);
       } finally {
         setIsLoading(false);
       }
@@ -44,7 +43,7 @@ function ClientAvatar({ userId }) {
   if (isLoading) {
     return (
       <div className="w-10 h-10 rounded-lg bg-brand-emerald/50 flex items-center justify-center">
-        <span className="text-white font-bold text-lg">…</span>
+        <span className="text-white font-bold text-lg">...</span>
       </div>
     );
   }

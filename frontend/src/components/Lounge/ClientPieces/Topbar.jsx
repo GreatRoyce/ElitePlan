@@ -1,6 +1,5 @@
 import React from "react";
 import { Search, Grid, List } from "lucide-react";
-import api from "../../../utils/axios"; // ✅ make sure this points to your configured axios instance
 
 export default function Topbar({
   user,

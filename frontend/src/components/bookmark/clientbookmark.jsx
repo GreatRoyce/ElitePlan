@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
-import api from "../../utils/axios";
+import api, { getApiErrorMessage, getApiErrorStatus } from "../../utils/axios";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "../../context/toastStore";
 
 function ClientBookmark({ user, bookmarkedProfiles, setBookmarkedProfiles }) {
   const [profiles, setProfiles] = useState([]);
@@ -10,6 +11,7 @@ function ClientBookmark({ user, bookmarkedProfiles, setBookmarkedProfiles }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const toast = useToast();
 
   // fetch bookmarks
   const fetchBookmarks = async () => {
@@ -23,8 +25,10 @@ function ClientBookmark({ user, bookmarkedProfiles, setBookmarkedProfiles }) {
     setError(null);
     try {
       const { data } = await api.get("/bookmarks/");
-      
-      if (!data?.success) throw new Error(data?.message || "Failed to fetch bookmarks");
+
+      if (!data?.success) {
+        throw new Error(data?.message || "Failed to fetch bookmarks");
+      }
 
       const bookmarks = Array.isArray(data.data) ? data.data : [];
 
@@ -53,8 +57,8 @@ function ClientBookmark({ user, bookmarkedProfiles, setBookmarkedProfiles }) {
 
       setProfiles(derivedProfiles);
     } catch (err) {
-      console.error("❌ Error fetching bookmarks:", err);
-      setError(err.response?.data?.message || err.message || "Failed to fetch");
+      console.error("Error fetching bookmarks:", err);
+      setError(getApiErrorMessage(err, "Failed to fetch"));
     } finally {
       setLoading(false);
     }
@@ -78,8 +82,12 @@ function ClientBookmark({ user, bookmarkedProfiles, setBookmarkedProfiles }) {
 
   const getTargetModelFromProfile = (profile) => {
     const normalizedType = String(profile?.type || "").toLowerCase();
-    if (normalizedType === "vendor" || normalizedType === "vendors") return "VendorProfile";
-    if (normalizedType === "planner" || normalizedType === "planners") return "PlannerProfile";
+    if (normalizedType === "vendor" || normalizedType === "vendors") {
+      return "VendorProfile";
+    }
+    if (normalizedType === "planner" || normalizedType === "planners") {
+      return "PlannerProfile";
+    }
     if (profile?.raw?.businessName) return "VendorProfile";
     return null;
   };
@@ -96,7 +104,9 @@ function ClientBookmark({ user, bookmarkedProfiles, setBookmarkedProfiles }) {
     const targetModel = getTargetModelFromProfile(profile);
 
     if (!targetModel) {
-      alert("Unable to determine profile type for bookmarking. Try again later.");
+      toast.error(
+        "Unable to determine profile type for bookmarking. Try again later."
+      );
       return;
     }
 
@@ -111,16 +121,16 @@ function ClientBookmark({ user, bookmarkedProfiles, setBookmarkedProfiles }) {
       }
       await fetchBookmarks();
     } catch (err) {
-      console.error("❌ Error toggling bookmark:", err);
-      const status = err?.response?.status;
-      const msg = err?.response?.data?.message || err.message || "Bookmark failed";
+      console.error("Error toggling bookmark:", err);
+      const status = getApiErrorStatus(err);
+      const msg = getApiErrorMessage(err, "Bookmark failed");
       setError(msg);
       if (status === 401) {
-        alert("Session expired. Please log in again.");
+        toast.info("Session expired. Please log in again.");
         localStorage.removeItem("token");
         navigate("/");
       } else {
-        alert(msg);
+        toast.error(msg);
       }
     } finally {
       setBookmarkLoading(null);
@@ -177,8 +187,7 @@ function ClientBookmark({ user, bookmarkedProfiles, setBookmarkedProfiles }) {
       }`}
     >
       <span>
-        Bookmarks{" "}
-        {bookmarkedProfiles.size > 0 && `(${bookmarkedProfiles.size})`}
+        Bookmarks {bookmarkedProfiles.size > 0 && `(${bookmarkedProfiles.size})`}
       </span>
     </button>
   );
@@ -187,7 +196,7 @@ function ClientBookmark({ user, bookmarkedProfiles, setBookmarkedProfiles }) {
     <div className="bookmark-container">
       <div className="flex items-center justify-between mb-4">
         <BookmarkToggle />
-        {loading && <div className="text-sm text-gray-500">Loading…</div>}
+        {loading && <div className="text-sm text-gray-500">Loading...</div>}
       </div>
 
       {error && (
@@ -220,7 +229,6 @@ function ClientBookmark({ user, bookmarkedProfiles, setBookmarkedProfiles }) {
         ))}
       </div>
 
-      {/* ========================= MODAL ========================= */}
       {selectedProfile && (
         <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
@@ -230,15 +238,14 @@ function ClientBookmark({ user, bookmarkedProfiles, setBookmarkedProfiles }) {
             className="bg-white rounded-2xl max-w-2xl w-full shadow-xl overflow-y-auto max-h-[90vh] p-6 relative"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close */}
             <button
               onClick={() => setSelectedProfile(null)}
               className="absolute top-4 right-4 text-gray-500 hover:text-black"
+              aria-label="Close modal"
             >
-              ✕
+              x
             </button>
 
-            {/* Header */}
             <div className="mb-4">
               <h2 className="text-2xl font-bold text-brand-charcoal">
                 {selectedProfile.raw?.businessName ||
@@ -250,12 +257,11 @@ function ClientBookmark({ user, bookmarkedProfiles, setBookmarkedProfiles }) {
               </p>
               {selectedProfile.raw?.tagline && (
                 <p className="text-gray-700 italic mt-2">
-                  “{selectedProfile.raw.tagline}”
+                  "{selectedProfile.raw.tagline}"
                 </p>
               )}
             </div>
 
-            {/* Gallery */}
             {Array.isArray(selectedProfile.raw?.gallery) &&
               selectedProfile.raw.gallery.length > 0 && (
                 <div className="mb-4">
@@ -275,7 +281,6 @@ function ClientBookmark({ user, bookmarkedProfiles, setBookmarkedProfiles }) {
                 </div>
               )}
 
-            {/* Particulars */}
             <div className="space-y-2 text-sm">
               {selectedProfile.raw?.specialization && (
                 <p>
@@ -310,7 +315,6 @@ function ClientBookmark({ user, bookmarkedProfiles, setBookmarkedProfiles }) {
               )}
             </div>
 
-            {/* Actions */}
             <div className="mt-6 flex gap-3">
               <button
                 onClick={() => toggleBookmark(selectedProfile)}

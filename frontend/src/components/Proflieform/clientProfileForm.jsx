@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
-import api from "../../utils/axios";
+import api, { getApiErrorMessage } from "../../utils/axios";
 import { Camera, Save, X, Upload, Edit, Edit3 } from "lucide-react";
+import { useToast } from "../../context/toastStore";
+import { error as logError } from "../../utils/logger";
 
 function ProfileForm({ user, onClose, onUpdate }) {
   const [formData, setFormData] = useState({
@@ -12,9 +14,9 @@ function ProfileForm({ user, onClose, onUpdate }) {
     website: "",
     instagram: "",
     facebook: "",
-    twitter: ""
+    twitter: "",
   });
-  
+
   const [profileImage, setProfileImage] = useState("");
   const [coverImage, setCoverImage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,15 +25,15 @@ function ProfileForm({ user, onClose, onUpdate }) {
   const [editMode, setEditMode] = useState(false);
   const [originalData, setOriginalData] = useState({});
   const [hasChanges, setHasChanges] = useState(false);
+  const toast = useToast();
 
-  // Load user data
   useEffect(() => {
     const loadUserData = async () => {
       setLoading(true);
       try {
         const { data } = await api.get("/auth/me");
         const userData = data.data;
-        
+
         const userFormData = {
           username: userData.username || "",
           email: userData.email || "",
@@ -41,71 +43,76 @@ function ProfileForm({ user, onClose, onUpdate }) {
           website: userData.website || "",
           instagram: userData.instagram || "",
           facebook: userData.facebook || "",
-          twitter: userData.twitter || ""
+          twitter: userData.twitter || "",
         };
-        
+
         setFormData(userFormData);
         setOriginalData(userFormData);
-        
+
         if (userData.profileImage) {
           const baseUrl = api.defaults.baseURL.replace("/api/v1", "");
-          setProfileImage(`${baseUrl}/${userData.profileImage.replace(/\\/g, "/")}`);
+          setProfileImage(
+            `${baseUrl}/${userData.profileImage.replace(/\\/g, "/")}`
+          );
         }
-        
+
         if (userData.coverImage) {
           const baseUrl = api.defaults.baseURL.replace("/api/v1", "");
-          setCoverImage(`${baseUrl}/${userData.coverImage.replace(/\\/g, "/")}`);
+          setCoverImage(
+            `${baseUrl}/${userData.coverImage.replace(/\\/g, "/")}`
+          );
         }
-      } catch (error) {
-        console.error("Error loading user data:", error);
+      } catch (err) {
+        logError("Error loading user data:", err);
+        toast.error(getApiErrorMessage(err, "Error loading profile"));
       } finally {
         setLoading(false);
       }
     };
 
     loadUserData();
-  }, [user]);
+  }, [user, toast]);
 
-  // Check for changes
   useEffect(() => {
-    const hasFormChanges = JSON.stringify(formData) !== JSON.stringify(originalData);
+    const hasFormChanges =
+      JSON.stringify(formData) !== JSON.stringify(originalData);
     setHasChanges(hasFormChanges);
   }, [formData, originalData]);
 
   const handleInputChange = (e) => {
     if (!editMode) return;
-    
+
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
   const handleImageUpload = async (e, type) => {
     if (!editMode) return;
-    
+
     const file = e.target.files[0];
     if (!file) return;
 
     const validTypes = ["image/jpeg", "image/png", "image/webp"];
     if (!validTypes.includes(file.type)) {
-      alert("Please upload a valid image file (JPEG, PNG, or WebP)");
+      toast.error("Please upload a valid image file (JPEG, PNG, or WebP)");
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert("Image size must be less than 5MB");
+      toast.error("Image size must be less than 5MB");
       return;
     }
 
     setUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
+    const uploadData = new FormData();
+    uploadData.append("file", file);
 
     try {
-      const { data } = await api.post("/upload/single", formData, {
-        headers: { "Content-Type": "multipart/form-data" }
+      const { data } = await api.post("/upload/single", uploadData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       if (data.success) {
@@ -116,9 +123,9 @@ function ProfileForm({ user, onClose, onUpdate }) {
         }
         setHasChanges(true);
       }
-    } catch (error) {
-      console.error("Error uploading image:", error);
-      alert("Failed to upload image");
+    } catch (err) {
+      logError("Error uploading image:", err);
+      toast.error(getApiErrorMessage(err, "Failed to upload image"));
     } finally {
       setUploading(false);
     }
@@ -136,21 +143,21 @@ function ProfileForm({ user, onClose, onUpdate }) {
       const updateData = {
         ...formData,
         profileImage: profileImage ? profileImage.split("/").pop() : undefined,
-        coverImage: coverImage ? coverImage.split("/").pop() : undefined
+        coverImage: coverImage ? coverImage.split("/").pop() : undefined,
       };
 
       const { data } = await api.put("/auth/profile", updateData);
-      
+
       if (data.success) {
         setOriginalData(formData);
         setHasChanges(false);
         setEditMode(false);
         onUpdate?.(data.data);
-        // Don't close automatically - let user see the saved state
+        toast.success("Profile updated successfully.");
       }
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      alert("Failed to update profile");
+    } catch (err) {
+      logError("Error updating profile:", err);
+      toast.error(getApiErrorMessage(err, "Failed to update profile"));
     } finally {
       setSaving(false);
     }
@@ -163,7 +170,7 @@ function ProfileForm({ user, onClose, onUpdate }) {
       );
       if (!confirmCancel) return;
     }
-    
+
     if (editMode) {
       setFormData(originalData);
       setEditMode(false);
@@ -178,13 +185,14 @@ function ProfileForm({ user, onClose, onUpdate }) {
   };
 
   const getInputClasses = (isDisabled = false) => {
-    const baseClasses = "w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-brand-emerald focus:border-transparent outline-none transition-all duration-200";
-    
+    const baseClasses =
+      "w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-brand-emerald focus:border-transparent outline-none transition-all duration-200";
+
     if (isDisabled) {
       return `${baseClasses} bg-gray-100 text-gray-500 cursor-not-allowed`;
     }
-    
-    return editMode 
+
+    return editMode
       ? `${baseClasses} border-gray-300 bg-white`
       : `${baseClasses} border-transparent bg-gray-50 text-gray-700`;
   };
@@ -203,13 +211,16 @@ function ProfileForm({ user, onClose, onUpdate }) {
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden animate-scale-in">
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-gradient-to-r from-brand-ivory to-white">
           <div className="flex items-center gap-3">
             <div>
-              <h2 className="text-2xl font-bold text-brand-navy">Profile Information</h2>
+              <h2 className="text-2xl font-bold text-brand-navy">
+                Profile Information
+              </h2>
               <p className="text-gray-600 mt-1">
-                {editMode ? "Edit your personal information" : "View your profile details"}
+                {editMode
+                  ? "Edit your personal information"
+                  : "View your profile details"}
               </p>
             </div>
             {!editMode && (
@@ -238,6 +249,7 @@ function ProfileForm({ user, onClose, onUpdate }) {
             <button
               onClick={handleCancel}
               className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors"
+              aria-label="Close profile editor"
             >
               <X size={20} className="text-gray-600" />
             </button>
@@ -245,9 +257,7 @@ function ProfileForm({ user, onClose, onUpdate }) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[70vh]">
-          {/* Cover & Profile Images */}
           <div className="mb-8">
-            {/* Cover Image */}
             <div className="relative h-32 bg-gradient-to-r from-brand-royal to-brand-emerald rounded-xl mb-16">
               {coverImage && (
                 <img
@@ -269,7 +279,6 @@ function ProfileForm({ user, onClose, onUpdate }) {
                 </label>
               )}
 
-              {/* Profile Image */}
               <div className="absolute -bottom-8 left-6">
                 <div className="relative">
                   <div className="w-24 h-24 rounded-2xl border-4 border-white bg-gray-200 shadow-lg overflow-hidden">
@@ -285,7 +294,6 @@ function ProfileForm({ user, onClose, onUpdate }) {
                       </div>
                     )}
                   </div>
-                  {/* Camera icon only appears in edit mode */}
                   {editMode && (
                     <label className="absolute -bottom-2 -right-2 bg-brand-emerald text-white p-1.5 rounded-full cursor-pointer hover:bg-emerald-600 transition-colors shadow-lg">
                       <Camera size={14} />
@@ -303,14 +311,16 @@ function ProfileForm({ user, onClose, onUpdate }) {
             </div>
           </div>
 
-          {/* Form Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Basic Information */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-brand-navy border-b pb-2">Basic Information</h3>
-              
+              <h3 className="text-lg font-semibold text-brand-navy border-b pb-2">
+                Basic Information
+              </h3>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Username
+                </label>
                 <input
                   type="text"
                   name="username"
@@ -323,7 +333,9 @@ function ProfileForm({ user, onClose, onUpdate }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
                 <input
                   type="email"
                   name="email"
@@ -332,11 +344,15 @@ function ProfileForm({ user, onClose, onUpdate }) {
                   className={getInputClasses(true)}
                   disabled
                 />
-                <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Email cannot be changed
+                </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Phone
+                </label>
                 <input
                   type="tel"
                   name="phone"
@@ -349,7 +365,9 @@ function ProfileForm({ user, onClose, onUpdate }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Location
+                </label>
                 <input
                   type="text"
                   name="location"
@@ -362,12 +380,15 @@ function ProfileForm({ user, onClose, onUpdate }) {
               </div>
             </div>
 
-            {/* Additional Information */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-brand-navy border-b pb-2">Additional Information</h3>
+              <h3 className="text-lg font-semibold text-brand-navy border-b pb-2">
+                Additional Information
+              </h3>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Bio
+                </label>
                 <textarea
                   name="bio"
                   value={formData.bio}
@@ -380,7 +401,9 @@ function ProfileForm({ user, onClose, onUpdate }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Website</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Website
+                </label>
                 <input
                   type="url"
                   name="website"
@@ -394,7 +417,9 @@ function ProfileForm({ user, onClose, onUpdate }) {
 
               <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Instagram</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Instagram
+                  </label>
                   <input
                     type="text"
                     name="instagram"
@@ -407,7 +432,9 @@ function ProfileForm({ user, onClose, onUpdate }) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Facebook</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Facebook
+                  </label>
                   <input
                     type="text"
                     name="facebook"
@@ -420,7 +447,9 @@ function ProfileForm({ user, onClose, onUpdate }) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Twitter</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Twitter
+                  </label>
                   <input
                     type="text"
                     name="twitter"
@@ -435,7 +464,6 @@ function ProfileForm({ user, onClose, onUpdate }) {
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex gap-3 justify-between items-center pt-6 mt-8 border-t border-gray-100">
             <div className="text-sm text-gray-500">
               {hasChanges && editMode && (
@@ -445,16 +473,16 @@ function ProfileForm({ user, onClose, onUpdate }) {
                 </span>
               )}
             </div>
-            
+
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={handleCancel}
                 className="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
               >
-                {editMode ? 'Cancel' : 'Close'}
+                {editMode ? "Cancel" : "Close"}
               </button>
-              
+
               <button
                 type="submit"
                 disabled={saving || uploading || (editMode && !hasChanges)}

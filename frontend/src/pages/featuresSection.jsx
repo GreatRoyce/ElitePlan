@@ -1,5 +1,5 @@
 // src/components/Homepage/FeaturesSection.jsx
-import React, { useState, useRef } from "react";
+import React, { useRef } from "react";
 import {
   MdHandshake,
   MdDashboard,
@@ -10,7 +10,7 @@ import {
 } from "react-icons/md";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
-import sqz from "../../src/assets/squeeze.png"
+import sqz from "../assets/squeeze.png";
 
 
 const keyfeatures = [
@@ -43,6 +43,7 @@ const keyfeatures = [
 export default function FeaturesSection() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const MotionDiv = motion.div;
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -65,7 +66,7 @@ export default function FeaturesSection() {
     <section className="w-full mt-16 bg-brand-ivory py-16 relative overflow-hidden">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" ref={ref}>
         {/* Section Header */}
-        <motion.div
+        <MotionDiv
           initial={{ opacity: 0, y: 30 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5 }}
@@ -77,17 +78,17 @@ export default function FeaturesSection() {
           <p className="text-gray-600 text-base max-w-2xl mx-auto">
             Thoughtfully designed tools to simplify event planning and elevate your workflow.
           </p>
-        </motion.div>
+        </MotionDiv>
 
         {/* Features Grid */}
-        <motion.div
+        <MotionDiv
           variants={containerVariants}
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
         >
           {keyfeatures.map((feature) => (
-            <motion.div
+            <MotionDiv
               key={feature.id}
               variants={itemVariants}
               className="group bg-cover bg-no-repeat bg-white/20 bg-center order border-gray-100 hover:border-brand-gold rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300" style={{backgroundImage: `url(${sqz})`}}
@@ -105,12 +106,12 @@ export default function FeaturesSection() {
                 <span>Learn more</span>
                 <MdArrowForward className="text-xs" />
               </div>
-            </motion.div>
+            </MotionDiv>
           ))}
-        </motion.div>
+        </MotionDiv>
 
         {/* CTA */}
-        <motion.div
+        <MotionDiv
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ delay: 0.4 }}
@@ -123,7 +124,7 @@ export default function FeaturesSection() {
             Explore All Features
             <MdArrowForward className="text-brand-gold" />
           </Link>
-        </motion.div>
+        </MotionDiv>
       </div>
     </section>
   );

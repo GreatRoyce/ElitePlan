@@ -47,6 +47,9 @@ export default function HowItWorks() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
   const [showSignup, setShowSignup] = useState(false);
+  const MotionH2 = motion.h2;
+  const MotionP = motion.p;
+  const MotionDiv = motion.div;
 
   const fadeUp = {
     hidden: { opacity: 0, y: 40 },
@@ -62,16 +65,16 @@ export default function HowItWorks() {
       {/* Section */}
       <section className="py-32" ref={ref}>
         <div className="max-w-6xl mx-auto px-6 text-center">
-          <motion.h2
+          <MotionH2
             variants={fadeUp}
             initial="hidden"
             animate={isInView ? "visible" : "hidden"}
             className="text-3xl md:text-4xl font-bold text-brand-navy mb-3"
           >
             How ElitePlan Works
-          </motion.h2>
+          </MotionH2>
 
-          <motion.p
+          <MotionP
             variants={fadeUp}
             initial="hidden"
             animate={isInView ? "visible" : "hidden"}
@@ -80,9 +83,9 @@ export default function HowItWorks() {
           >
             A simple, structured journey from idea to celebration — built to make
             planning effortless.
-          </motion.p>
+          </MotionP>
 
-          <motion.div
+          <MotionDiv
             initial="hidden"
             animate={isInView ? "visible" : "hidden"}
             variants={{
@@ -93,7 +96,7 @@ export default function HowItWorks() {
             className="grid grid-cols-1 md:grid-cols-3 gap-8"
           >
             {steps.map((step) => (
-              <motion.div
+              <MotionDiv
                 key={step.id}
                 variants={fadeUp}
                 className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 p-8"
@@ -107,12 +110,12 @@ export default function HowItWorks() {
                 <p className="text-gray-600 text-sm leading-relaxed">
                   {step.desc}
                 </p>
-              </motion.div>
+              </MotionDiv>
             ))}
-          </motion.div>
+          </MotionDiv>
 
           {/* ✅ Get Started Modal Trigger */}
-          <motion.div
+          <MotionDiv
             variants={fadeUp}
             initial="hidden"
             animate={isInView ? "visible" : "hidden"}
@@ -125,7 +128,7 @@ export default function HowItWorks() {
             >
               Get Started Today
             </button>
-          </motion.div>
+          </MotionDiv>
         </div>
       </section>
 
@@ -191,3 +194,5 @@ export default function HowItWorks() {
     </div>
   );
 }
+
+

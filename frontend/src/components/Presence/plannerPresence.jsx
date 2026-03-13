@@ -1,6 +1,8 @@
 import React, { useState } from "react";
-import api from "../../utils/axios";
-import { User, Mail, Phone, Camera, Save, Star } from "lucide-react";
+import api, { getApiErrorMessage } from "../../utils/axios";
+import { User, Mail, Phone, Camera, Save } from "lucide-react";
+import { useToast } from "../../context/toastStore";
+import { log, error as logError } from "../../utils/logger";
 
 function PlannerPresence({ user, planner }) {
   const [formData, setFormData] = useState({
@@ -15,6 +17,7 @@ function PlannerPresence({ user, planner }) {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const toast = useToast();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -24,9 +27,14 @@ function PlannerPresence({ user, planner }) {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (!file.type.startsWith("image/"))
-        return alert("Please select an image file");
-      if (file.size > 5 * 1024 * 1024) return alert("Image must be <5MB");
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please select an image file");
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Image must be smaller than 5MB");
+        return;
+      }
 
       setFormData((prev) => ({
         ...prev,
@@ -61,35 +69,25 @@ function PlannerPresence({ user, planner }) {
     try {
       let response;
       if (planner?._id) {
-        // Update existing profile
-        console.log("📤 Updating planner profile with ID:", planner._id);
-        response = await api.put(
-          `/planner-profile/update/${planner._id}`,
-          data,
-          {
-            headers: { "Content-Type": "multipart/form-data" },
-          }
-        );
+        log("Updating planner profile with ID:", planner._id);
+        response = await api.put(`/planner-profile/update/${planner._id}`, data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
       } else {
-        // Create new profile
-        console.log("📤 Creating new planner profile...");
+        log("Creating new planner profile...");
         response = await api.post("/planner-profile/create", data, {
           headers: { "Content-Type": "multipart/form-data" },
         });
       }
-      console.log("✅ Profile saved successfully:", response.data);
-      alert(
-        "Profile saved successfully! The page will now reload to reflect changes."
+
+      log("Profile saved successfully:", response.data);
+      toast.success(
+        "Profile saved successfully. The page will now reload to reflect changes."
       );
-      window.location.reload(); // Reload to show updated data
+      window.location.reload();
     } catch (err) {
-      console.error(
-        "❌ Error saving profile:",
-        err.response?.data || err.message
-      );
-      alert(
-        `Error saving profile: ${err.response?.data?.message || err.message}`
-      );
+      logError("Error saving profile:", err);
+      toast.error(getApiErrorMessage(err, "Error saving profile"));
     } finally {
       setIsSubmitting(false);
     }
@@ -105,7 +103,6 @@ function PlannerPresence({ user, planner }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column - Profile Image & Info */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-2xl border border-gray-200 p-6 sticky top-8">
             <div className="text-center mb-6">
@@ -155,7 +152,6 @@ function PlannerPresence({ user, planner }) {
           </div>
         </div>
 
-        {/* Right Column - Form */}
         <div className="lg:col-span-2">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
@@ -164,7 +160,6 @@ function PlannerPresence({ user, planner }) {
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Full Name */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
                     Full Name *
@@ -179,7 +174,6 @@ function PlannerPresence({ user, planner }) {
                   />
                 </div>
 
-                {/* Company Name */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
                     Company Name
@@ -193,7 +187,6 @@ function PlannerPresence({ user, planner }) {
                   />
                 </div>
 
-                {/* Phone */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
                     Phone Number *
@@ -208,7 +201,6 @@ function PlannerPresence({ user, planner }) {
                   />
                 </div>
 
-                {/* Specialization */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
                     Specialization
@@ -235,7 +227,6 @@ function PlannerPresence({ user, planner }) {
                   </select>
                 </div>
 
-                {/* Years Experience */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
                     Years Experience
@@ -250,7 +241,6 @@ function PlannerPresence({ user, planner }) {
                   />
                 </div>
 
-                {/* Short Bio */}
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-sm font-medium text-gray-700">
                     Short Bio
@@ -266,7 +256,6 @@ function PlannerPresence({ user, planner }) {
               </div>
             </div>
 
-            {/* Submit */}
             <div className="flex justify-end gap-4 pt-4">
               <button
                 type="submit"

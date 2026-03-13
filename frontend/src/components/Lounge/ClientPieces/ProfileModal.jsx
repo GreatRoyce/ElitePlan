@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { X, Bookmark, Calendar, Image, ZoomIn } from "lucide-react";
 import StarRating from "./StarRating";
+import { log, warn } from "../../../utils/logger";
 
 export default function ProfileModal({
   selectedProfile,
@@ -18,9 +19,8 @@ export default function ProfileModal({
   const p = selectedProfile;
   const isBookmarked = bookmarkedProfiles.has(p.id);
 
-  console.log("🟢 Selected Profile Data:", selectedProfile);
+  log("Selected profile data:", selectedProfile);
 
-  // Image handling
   const handleImageLoad = (index) => {
     setImageLoading((prev) => ({ ...prev, [index]: false }));
   };
@@ -43,19 +43,17 @@ export default function ProfileModal({
     if (e.target === e.currentTarget) setSelectedImage(null);
   };
 
-  // Consultation handling
   const handleRequestConsultation = () => {
-    // Use p.id or fallback to p.raw._id if present
     const targetUserId = p.id || p.raw?._id;
 
     if (!targetUserId) {
-      console.warn("No valid ID found for this profile!");
+      warn("No valid ID found for this profile");
       return;
     }
 
     const targetType = p.type === "Vendor" ? "Vendor" : "Planner";
 
-    console.log("🟢 Requesting consultation:", { targetUserId, targetType });
+    log("Requesting consultation:", { targetUserId, targetType });
 
     navigate("/consult", {
       state: { targetUserId, targetType },
@@ -64,10 +62,8 @@ export default function ProfileModal({
 
   return (
     <>
-      {/* Main Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
         <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl relative animate-slideUp">
-          {/* Header */}
           <div className="p-6 border-b border-gray-100 flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <img
@@ -98,14 +94,13 @@ export default function ProfileModal({
             <button
               onClick={() => setSelectedProfile(null)}
               className="p-2 hover:bg-gray-100 rounded-lg text-gray-500"
+              aria-label="Close profile modal"
             >
               <X size={22} />
             </button>
           </div>
 
-          {/* Content */}
           <div className="p-6 space-y-6">
-            {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {(p.yearsExperience || 0) > 0 && (
                 <div className="bg-brand-ivory p-4 rounded-xl text-center border border-gray-100">
@@ -123,13 +118,14 @@ export default function ProfileModal({
               </div>
               {p.verified && (
                 <div className="bg-brand-ivory p-4 rounded-xl text-center border border-gray-100">
-                  <div className="text-2xl font-bold text-brand-emerald">✓</div>
+                  <div className="text-2xl font-bold text-brand-emerald">
+                    Yes
+                  </div>
                   <div className="text-sm text-gray-600">Verified</div>
                 </div>
               )}
             </div>
 
-            {/* About */}
             {p.shortBio && (
               <div>
                 <h3 className="font-semibold text-gray-800 mb-2 text-lg">
@@ -139,7 +135,6 @@ export default function ProfileModal({
               </div>
             )}
 
-            {/* Specialization / Category / Contact */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               {p.specialization && (
                 <p>
@@ -163,7 +158,6 @@ export default function ProfileModal({
               )}
             </div>
 
-            {/* Languages */}
             {p.languages && (
               <div>
                 <h3 className="font-semibold text-gray-800 mb-2 text-lg">
@@ -177,7 +171,6 @@ export default function ProfileModal({
               </div>
             )}
 
-            {/* Event Types */}
             {p.eventTypes && (
               <div>
                 <h3 className="font-semibold text-gray-800 mb-2 text-lg">
@@ -191,7 +184,6 @@ export default function ProfileModal({
               </div>
             )}
 
-            {/* Gallery */}
             {Array.isArray(p.gallery) && p.gallery.length > 0 && (
               <div>
                 <h3 className="font-semibold text-gray-800 mb-2 text-lg flex items-center gap-2">
@@ -234,7 +226,6 @@ export default function ProfileModal({
               </div>
             )}
 
-            {/* Action Buttons */}
             <div className="pt-4 flex flex-col sm:flex-row justify-between gap-3 border-t border-gray-100">
               <button
                 onClick={() => toggleBookmark(p)}
@@ -264,7 +255,6 @@ export default function ProfileModal({
         </div>
       </div>
 
-      {/* Image Viewer Modal */}
       {selectedImage && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-fadeIn"
@@ -274,6 +264,7 @@ export default function ProfileModal({
             <button
               onClick={() => setSelectedImage(null)}
               className="absolute top-4 right-4 z-10 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-all duration-300"
+              aria-label="Close image viewer"
             >
               <X size={24} />
             </button>

@@ -156,7 +156,7 @@ function Register() {
     if (!role) return setMessage("Please select a role before registering.");
 
     try {
-      const res = await api.post("/auth/register", { ...formData, role });
+      await api.post("/auth/register", { ...formData, role });
       setMessage("Registration successful! Redirecting to login page...");
 
       setTimeout(() => {

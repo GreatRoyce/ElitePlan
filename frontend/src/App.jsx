@@ -7,12 +7,8 @@ import {
 } from "react-router-dom";
 import "./App.css";
 
-
-console.log("🔍 API URL:", import.meta.env.VITE_API_URL);
-
-
 // Pages
-import Connect from "./pages/connect"; // Landing page
+import Connect from "./pages/connect";
 import FeaturesSection from "./pages/featuresSection";
 import WhyChooseSection from "./pages/WhyChooseSection";
 import HowItWorks from "./pages/howItWorks";
@@ -30,11 +26,8 @@ import Nav from "./pages/nav";
 import ProtectedRoute from "./routes/protectedRoute";
 import PublicRoute from "./routes/publicRoute";
 
-import { useAuth } from "./context/authContext";
+import { useAuth } from "./context/authStore";
 
-/* -----------------------------
-   Layout Wrapper
------------------------------ */
 function Layout({ children }) {
   const { logout } = useAuth();
   const location = useLocation();
@@ -47,7 +40,6 @@ function Layout({ children }) {
     "/how-it-works",
     "/login",
     "/register",
-    // "/logout" is intentionally omitted to hide the nav during logout
   ];
   const showNav = publicPaths.includes(location.pathname);
 
@@ -59,15 +51,12 @@ function Layout({ children }) {
   );
 }
 
-/* -----------------------------
-   Main Routes
------------------------------ */
 function AppContent() {
   const { login } = useAuth();
 
   return (
     <Routes>
-      {/* 🌟 Public Pages */}
+      {/* Public Pages */}
       <Route
         path="/"
         element={
@@ -109,7 +98,7 @@ function AppContent() {
         }
       />
 
-      {/* 🌟 Auth Pages (Guests only) */}
+      {/* Auth Pages (Guests only) */}
       <Route
         path="/login"
         element={
@@ -131,7 +120,7 @@ function AppContent() {
         }
       />
 
-      {/* 🌟 Protected Pages (Logged-in users only) */}
+      {/* Protected Pages (Logged-in users only) */}
       <Route
         path="/lounge"
         element={
@@ -173,10 +162,10 @@ function AppContent() {
         }
       />
 
-      {/* 🌟 Logout (Public route, always accessible) */}
+      {/* Logout (Public route, always accessible) */}
       <Route path="/logout" element={<Logout />} />
 
-      {/* 🌟 404 Not Found */}
+      {/* 404 Not Found */}
       <Route
         path="*"
         element={
@@ -189,9 +178,6 @@ function AppContent() {
   );
 }
 
-/* -----------------------------
-   Root App Component
------------------------------ */
 export default function App() {
   return (
     <Router>

@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
-import api from "../../utils/axios";
+import api, { getApiErrorMessage } from "../../utils/axios";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/authContext";
+import { useAuth } from "../../context/authStore";
+import { useToast } from "../../context/toastStore";
+import { log } from "../../utils/logger";
 
 // Components
 import Sidebar from "./ClientPieces/Sidebar";
@@ -26,6 +28,7 @@ import {
 
 export default function ClientLounge() {
   const { user } = useAuth();
+  const toast = useToast();
   const [profiles, setProfiles] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [bookmarkedProfiles, setBookmarkedProfiles] = useState(new Set());
@@ -42,7 +45,7 @@ export default function ClientLounge() {
 
   const navigate = useNavigate();
 
-  // 🧩 Helper — format API profiles
+  //  Helper  format API profiles
   const mapProfile = useCallback((item, type) => {
     const baseImageUrl = api.defaults.baseURL?.replace("/api/v1", "") || "";
     const imageUrl = item.profileImage
@@ -60,8 +63,8 @@ export default function ClientLounge() {
         return galleryItem;
       }) || [];
 
-    console.log(
-      `📸 ${type} Gallery for ${item.businessName || item.companyName}:`,
+    log(
+      ` ${type} Gallery for ${item.businessName || item.companyName}:`,
       galleryImages
     );
 
@@ -103,7 +106,7 @@ export default function ClientLounge() {
         };
   }, []);
 
-  // 🧠 Fetch vendor & planner profiles
+  //  Fetch vendor & planner profiles
   useEffect(() => {
     const fetchProfiles = async () => {
       setLoading(true);
@@ -113,8 +116,8 @@ export default function ClientLounge() {
           api.get("/planner-profile/all"),
         ]);
 
-        console.log("📸 VENDORS API RESPONSE:", vendors.data?.data);
-        console.log("📸 PLANNERS API RESPONSE:", planners.data?.data);
+        log(" VENDORS API RESPONSE:", vendors.data?.data);
+        log(" PLANNERS API RESPONSE:", planners.data?.data);
 
         const vendorData = vendors.data?.data?.map((v) =>
           mapProfile(v, "Vendor")
@@ -124,10 +127,10 @@ export default function ClientLounge() {
         );
 
         const allProfiles = [...(vendorData || []), ...(plannerData || [])];
-        console.log("🎯 ALL PROFILES WITH GALLERY:", allProfiles);
+        log(" ALL PROFILES WITH GALLERY:", allProfiles);
         setProfiles(allProfiles);
       } catch (err) {
-        console.error("❌ Error fetching profiles:", err);
+        console.error(" Error fetching profiles:", err);
       } finally {
         setLoading(false);
       }
@@ -136,33 +139,33 @@ export default function ClientLounge() {
     fetchProfiles();
   }, [mapProfile]);
 
-  // 💾 Fetch bookmarks exactly like ClientBookmark
+  //  Fetch bookmarks exactly like ClientBookmark
   useEffect(() => {
     const fetchBookmarks = async () => {
       if (!user) {
-        console.log("👤 No user logged in, clearing bookmarks");
+        log(" No user logged in, clearing bookmarks");
         return setBookmarkedProfiles(new Set());
       }
       try {
         const { data } = await api.get("/bookmarks");
-        console.log("📖 Bookmarks fetched:", data.data);
+        log(" Bookmarks fetched:", data.data);
 
         if (data.success && data.data) {
           const bookmarkedIds = new Set(
             data.data.map((b) => b.targetId?._id).filter(Boolean)
           );
-          console.log("⭐ Bookmarked profile IDs:", bookmarkedIds);
+          log(" Bookmarked profile IDs:", bookmarkedIds);
           setBookmarkedProfiles(bookmarkedIds);
         }
       } catch (err) {
-        console.error("❌ Error fetching bookmarks:", err);
+        console.error(" Error fetching bookmarks:", err);
       }
     };
 
     fetchBookmarks();
   }, [user, setBookmarkedProfiles]);
 
-  // 📅 Fetch bookings
+  //  Fetch bookings
   useEffect(() => {
     const fetchBookings = async () => {
       setBookingsLoading(true);
@@ -170,7 +173,7 @@ export default function ClientLounge() {
         const res = await api.get("/bookings");
         if (res.data.success) setBookings(res.data.data);
       } catch (err) {
-        console.error("❌ Error fetching bookings:", err);
+        console.error(" Error fetching bookings:", err);
       } finally {
         setBookingsLoading(false);
       }
@@ -178,13 +181,13 @@ export default function ClientLounge() {
     if (activeSection === "bookings") fetchBookings();
   }, [activeSection]);
 
-  // ⚙️ Memoized bookmarks
+  //  Memoized bookmarks
   const bookmarkedProfilesList = useMemo(
     () => profiles.filter((p) => bookmarkedProfiles.has(p.id)),
     [profiles, bookmarkedProfiles]
   );
 
-  // ⚙️ Filtered profiles
+  //  Filtered profiles
   const filteredProfiles = useMemo(() => {
     const activeList =
       activeSection === "saved" ? bookmarkedProfilesList : profiles;
@@ -212,10 +215,10 @@ export default function ClientLounge() {
     bookmarkedProfilesList,
   ]);
 
-  // 🩶 Bookmark toggle exactly like ClientBookmark
+  //  Bookmark toggle exactly like ClientBookmark
   const toggleBookmark = async (profile) => {
     if (!user) {
-      console.log("🔒 User not authenticated, redirecting to login");
+      log(" User not authenticated, redirecting to login");
       navigate("/");
       return;
     }
@@ -224,7 +227,7 @@ export default function ClientLounge() {
     const isBookmarked = bookmarkedProfiles.has(id);
     const targetModel = type === "Vendor" ? "VendorProfile" : "PlannerProfile";
 
-    console.log("📌 Toggling bookmark for:", profile.name, "ID:", id);
+    log(" Toggling bookmark for:", profile.name, "ID:", id);
 
     setBookmarkLoading(id);
     try {
@@ -239,12 +242,12 @@ export default function ClientLounge() {
       if (isBookmarked) await api.delete(`/bookmarks/${id}`);
       else await api.post("/bookmarks", { targetId: id, targetModel });
 
-      console.log(
-        `✅ Bookmark ${isBookmarked ? "removed" : "added"} for ID:`,
+      log(
+        ` Bookmark ${isBookmarked ? "removed" : "added"} for ID:`,
         id
       );
     } catch (err) {
-      console.error("❌ Error toggling bookmark:", err);
+      console.error(" Error toggling bookmark:", err);
       // Rollback
       setBookmarkedProfiles((prev) => {
         const next = new Set(prev);
@@ -259,7 +262,7 @@ export default function ClientLounge() {
   // Handle Event Form Submission
   const handleEventFormSubmit = async (formData) => {
     try {
-      console.log("📝 Event Form Submitted:", formData);
+      log(" Event Form Submitted:", formData);
 
       // Add client information to the form data
       const eventData = {
@@ -274,16 +277,18 @@ export default function ClientLounge() {
       const response = await api.post("/events", eventData);
 
       if (response.data.success) {
-        console.log("✅ Event created successfully:", response.data);
+        log(" Event created successfully:", response.data);
         // Show success message
-        alert("Event form submitted successfully! We'll contact you soon.");
+        toast.success("Event form submitted successfully. We'll contact you soon.");
 
         // Optionally switch to bookings section
         setActiveSection("bookings");
       }
     } catch (error) {
-      console.error("❌ Error submitting event form:", error);
-      alert("Error submitting event form. Please try again.");
+      console.error("Error submitting event form:", error);
+      toast.error(
+        getApiErrorMessage(error, "Error submitting event form. Please try again.")
+      );
     }
   };
 
@@ -301,7 +306,7 @@ export default function ClientLounge() {
     }
   };
 
-  // 🧭 Sidebar Navigation with counts - ADDED EVENT FORM
+  //  Sidebar Navigation with counts - ADDED EVENT FORM
   const navItems = [
     {
       id: "overview",
@@ -345,7 +350,7 @@ export default function ClientLounge() {
     [profiles.length, bookmarkedProfiles.size]
   );
 
-  // 🎨 Dynamic content - ADDED EVENT FORM CASE
+  //  Dynamic content - ADDED EVENT FORM CASE
   const renderContent = () => {
     switch (activeSection) {
       case "profile":
@@ -466,7 +471,7 @@ export default function ClientLounge() {
   );
 }
 
-// ✅ Bookings Section
+//  Bookings Section
 function BookingsSection({ bookings, bookingsLoading }) {
   if (bookingsLoading)
     return (

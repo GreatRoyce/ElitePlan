@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import Chat from "../../Shared/Chat";
 import api from "../../../utils/axios"; // Corrected import path
-import { useAuth } from "../../../context/authContext";
+import { useAuth } from "../../../context/authStore";
 
 export default function MessagesSection({ vendorId }) {
   const [conversations, setConversations] = useState([]);
