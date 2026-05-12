@@ -2,12 +2,12 @@ import React, { useEffect, useState, useRef } from "react";
 import { Check, X, User, Calendar, Loader2, MapPin, Users } from "lucide-react";
 import api from "../../../utils/axios";
 import squeeze from "../../../assets/squeeze.png";
-import { io } from "socket.io-client";
+import { useAuth } from "../../../context/authStore";
 import { log, error as logError } from "../../../utils/logger";
-
-const SOCKET_SERVER_URL = "http://localhost:3000";
+import { getRealtimeClient, releaseRealtimeClient } from "../../../utils/realtime";
 
 export default function PendingRequests({ vendorId }) {
+  const { user } = useAuth();
   const [requests, setRequests] = useState([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -15,18 +15,21 @@ export default function PendingRequests({ vendorId }) {
 
   const socketRef = useRef(null);
 
+  const effectiveVendorId = vendorId || user?._id;
+
   // Step 1: Connect Socket.IO for real-time messages
   useEffect(() => {
-    socketRef.current = io(SOCKET_SERVER_URL, { autoConnect: false });
-    const socket = socketRef.current;
-    socket.connect();
-
-    socket.emit("join", { userId: vendorId, role: "vendor" });
+    if (!effectiveVendorId) return () => {};
+    socketRef.current = getRealtimeClient({
+      userId: effectiveVendorId,
+      role: "vendor",
+    });
 
     return () => {
-      socket.disconnect();
+      releaseRealtimeClient({ userId: effectiveVendorId, role: "vendor" });
+      socketRef.current = null;
     };
-  }, [vendorId]);
+  }, [effectiveVendorId]);
 
   // Step 2: Fetch pending requests
   useEffect(() => {
@@ -74,29 +77,25 @@ export default function PendingRequests({ vendorId }) {
             ? request.targetUser?._id
             : undefined);
 
-        const senderModel =
-          request.targetType === "VendorProfile"
-            ? "VendorProfile"
-            : "PlannerProfile";
-        const recipientModel = "ClientProfile";
+        const senderModel = "User";
+        const recipientModel = "User";
 
-        if (clientId && vendorId) {
+        if (clientId && effectiveVendorId) {
           const messageText = `Hi ${
             request.client?.name || request.user?.username || "there"
           }, your request has been approved!`;
 
           await api.post("/messages", {
-            sender: vendorId,
-            senderModel,
+            senderModel: senderModel || "User",
             recipientId: clientId,
-            recipientModel,
+            recipientModel: recipientModel || "User",
             text: messageText,
           });
 
           log(`Auto-message saved for client ${clientId}`);
 
-          socketRef.current.emit("send_message", {
-            fromUserId: vendorId,
+          socketRef.current?.emit("send_message", {
+            fromUserId: effectiveVendorId,
             toUserId: clientId,
             message: messageText,
           });

@@ -42,6 +42,7 @@ export default function ClientLounge() {
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
   const navigate = useNavigate();
 
@@ -345,9 +346,9 @@ export default function ClientLounge() {
     () => ({
       overview: profiles.length,
       saved: bookmarkedProfiles.size,
-      messages: 0, // You can add message count logic here
+      messages: unreadMessagesCount,
     }),
-    [profiles.length, bookmarkedProfiles.size]
+    [profiles.length, bookmarkedProfiles.size, unreadMessagesCount]
   );
 
   //  Dynamic content - ADDED EVENT FORM CASE
@@ -356,7 +357,7 @@ export default function ClientLounge() {
       case "profile":
         return <ClientPresence user={user} />;
       case "messages":
-        return <MessagesSection />;
+        return <MessagesSection onUnreadCountChange={setUnreadMessagesCount} />;
       case "bookings":
         return (
           <BookingsSection

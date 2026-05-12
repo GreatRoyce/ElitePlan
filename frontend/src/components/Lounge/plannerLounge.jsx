@@ -133,7 +133,8 @@ export default function PlannerLounge() {
       case "messages":
         return (
           <Messages
-            plannerId={user?._id}
+            currentUserId={user?._id}
+            currentRole="planner"
             onUnreadCountChange={setUnreadMessagesCount}
           />
         );

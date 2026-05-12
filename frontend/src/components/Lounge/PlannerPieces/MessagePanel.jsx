@@ -1,85 +1,76 @@
-import React, { useEffect, useState } from "react";
-import { MessageCircle, Search, User, X } from "lucide-react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { MessageCircle, Search, User } from "lucide-react";
 import api from "../../../utils/axios";
 import Chat from "../../Shared/Chat";
 
-export default function MessagesPanel({ plannerId, onUnreadCountChange }) {
+const normalizeConversation = (convo) => ({
+  _id: convo?.participant?._id,
+  participantId: convo?.participant?._id,
+  participantName:
+    convo?.participant?.username || convo?.participant?.firstName || "Unknown User",
+  participantRole: convo?.participant?.role || "client",
+  lastMessage: convo?.lastMessage?.text || "",
+  lastMessageTimestamp: convo?.lastMessage?.createdAt || null,
+  unreadCount: convo?.unreadCount || 0,
+});
+
+export default function MessagePanel({
+  currentUserId,
+  currentRole = "planner",
+  onUnreadCountChange,
+  plannerId,
+}) {
+  const effectiveUserId = currentUserId || plannerId;
+
   const [conversations, setConversations] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [deletingConversation, setDeletingConversation] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Fetch conversations
-  useEffect(() => {
-    const fetchConversations = async () => {
-      try {
-        // Use the correct, centralized endpoint for conversations
-        const res = await api.get("/messages/conversations");
-        if (res.data.success) {
-          // Format the conversation data correctly
-          const formatted = (res.data.conversations || []).map((convo) => ({
-            _id: convo.participant._id,
-            participantId: convo.participant._id,
-            participantName:
-              convo.participant.username ||
-              convo.participant.firstName ||
-              "Unknown User",
-            participantRole: convo.participant.role, // Get the role from the participant data
-            lastMessage: convo.lastMessage.text,
-            lastMessageTimestamp: convo.lastMessage.createdAt,
-            unreadCount: convo.unreadCount || 0,
-          }));
-          setConversations(formatted);
-          // Report the total unread count to the parent
-          const totalUnread = formatted.reduce(
-            (sum, convo) => sum + convo.unreadCount,
-            0
-          );
-          onUnreadCountChange?.(totalUnread);
-        }
-      } catch (err) {
-        console.error("❌ Error fetching conversations:", err);
-      } finally {
-        setLoading(false);
+  const refreshConversations = useCallback(async () => {
+    try {
+      const res = await api.get("/messages/conversations");
+      if (res.data.success) {
+        const formatted = (res.data.conversations || []).map(normalizeConversation);
+        setConversations(formatted);
+        const totalUnread = formatted.reduce(
+          (sum, convo) => sum + (convo.unreadCount || 0),
+          0
+        );
+        onUnreadCountChange?.(totalUnread);
       }
-    };
-    fetchConversations();
+    } catch (err) {
+      console.error("Error fetching conversations:", err);
+    } finally {
+      setLoading(false);
+    }
   }, [onUnreadCountChange]);
 
-  // Delete conversation
-  const handleDeleteConversation = async (participantId, e) => {
-    e.stopPropagation();
-    setDeletingConversation(participantId);
-    try {
-      await api.delete(`/messages/conversations/${participantId}`);
-      setConversations((prev) =>
-        prev.filter((c) => c.participantId !== participantId)
-      );
-      if (activeChat === participantId) setActiveChat(null);
-    } catch (err) {
-      console.error("❌ Error deleting conversation:", err);
-    } finally {
-      setDeletingConversation(null);
-    }
-  };
+  useEffect(() => {
+    refreshConversations();
+  }, [refreshConversations]);
 
   const formatTime = (ts) => {
     if (!ts) return "";
     const date = new Date(ts);
     const now = new Date();
     const diffHours = (now - date) / (1000 * 60 * 60);
-    if (diffHours < 24)
+    if (diffHours < 24) {
       return date.toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
       });
+    }
     if (diffHours < 48) return "Yesterday";
     return date.toLocaleDateString([], { month: "short", day: "numeric" });
   };
 
-  const filteredConversations = conversations.filter((chat) =>
-    chat.participantName.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredConversations = useMemo(
+    () =>
+      conversations.filter((chat) =>
+        chat.participantName.toLowerCase().includes(searchQuery.toLowerCase())
+      ),
+    [conversations, searchQuery]
   );
 
   if (loading) {
@@ -95,7 +86,6 @@ export default function MessagesPanel({ plannerId, onUnreadCountChange }) {
 
   return (
     <div className="grid md:grid-cols-3 gap-6 h-full p-6 bg-gray-50 min-h-screen">
-      {/* Sidebar */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col">
         <div className="p-4 border-b flex items-center justify-between">
           <h2 className="font-semibold text-brand-navy text-lg flex items-center gap-2">
@@ -104,7 +94,6 @@ export default function MessagesPanel({ plannerId, onUnreadCountChange }) {
         </div>
 
         <div className="p-3">
-          {/* Search */}
           <div className="flex items-center bg-gray-100 rounded-lg px-2 py-1 mb-4">
             <Search size={16} className="text-gray-500 mr-2" />
             <input
@@ -125,7 +114,7 @@ export default function MessagesPanel({ plannerId, onUnreadCountChange }) {
               {filteredConversations.map((chat) => (
                 <div
                   key={chat.participantId}
-                  onClick={() => setActiveChat(chat)} // Set the entire chat object as active
+                  onClick={() => setActiveChat(chat)}
                   className={`p-3 rounded-xl cursor-pointer transition-all relative group ${
                     activeChat?.participantId === chat.participantId
                       ? "bg-brand-ivory border-l-4 border-brand-gold"
@@ -156,22 +145,6 @@ export default function MessagesPanel({ plannerId, onUnreadCountChange }) {
                       <span className="text-xs text-gray-400 whitespace-nowrap">
                         {formatTime(chat.lastMessageTimestamp)}
                       </span>
-
-                      {/* Delete */}
-                      <button
-                        onClick={(e) =>
-                          handleDeleteConversation(chat.participantId, e)
-                        }
-                        disabled={deletingConversation === chat.participantId}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all duration-200 disabled:opacity-50"
-                        title="Delete conversation"
-                      >
-                        {deletingConversation === chat.participantId ? (
-                          <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                        ) : (
-                          <X size={16} />
-                        )}
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -181,25 +154,14 @@ export default function MessagesPanel({ plannerId, onUnreadCountChange }) {
         </div>
       </div>
 
-      {/* Chat Window */}
       <div className="md:col-span-2 bg-white rounded-2xl shadow-sm flex flex-col h-full">
         {activeChat ? (
           <Chat
-            userId={plannerId}
-            role="planner"
+            userId={effectiveUserId}
+            role={currentRole}
             recipientId={activeChat.participantId}
             recipientRole={activeChat.participantRole}
-            onMessageSent={() => {
-              // refresh sidebar to update last message/unread
-              const refreshConversations = async () => {
-                try {
-                  // This part is already changed above
-                } catch (err) {
-                  console.error("❌ Error refreshing conversations:", err);
-                }
-              };
-              refreshConversations();
-            }}
+            onMessageSent={refreshConversations}
           />
         ) : (
           <div className="flex flex-col items-center justify-center flex-1 text-gray-400">

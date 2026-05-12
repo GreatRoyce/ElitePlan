@@ -2,11 +2,11 @@ import React, { useEffect, useState, useRef } from "react";
 import { Check, X, User, Calendar, Loader2, MapPin, Users } from "lucide-react";
 import api from "../../../utils/axios";
 import squeeze from "../../../../src/assets/edge.png";
-import { io } from "socket.io-client";
-
-const SOCKET_SERVER_URL = "http://localhost:3000"; // Update if needed
+import { useAuth } from "../../../context/authStore";
+import { getRealtimeClient, releaseRealtimeClient } from "../../../utils/realtime";
 
 export default function PendingRequests() {
+  const { user } = useAuth();
   const [requests, setRequests] = useState([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -17,17 +17,14 @@ export default function PendingRequests() {
   // 1️⃣ Socket.IO connection
   // ===============================
   useEffect(() => {
-    socketRef.current = io(SOCKET_SERVER_URL, { autoConnect: false });
-    const socket = socketRef.current;
-    socket.connect();
-
-    // Join planner room
-    socket.emit("join", { userId: "planner", role: "planner" });
+    if (!user?._id) return () => {};
+    socketRef.current = getRealtimeClient({ userId: user._id, role: "planner" });
 
     return () => {
-      socket.disconnect();
+      releaseRealtimeClient({ userId: user._id, role: "planner" });
+      socketRef.current = null;
     };
-  }, []);
+  }, [user?._id]);
 
   // ===============================
   // 2️⃣ Fetch pending requests
@@ -59,22 +56,25 @@ export default function PendingRequests() {
       setActionType(null);
 
       if (status === "approved") {
-        const request = res.data;
+        const request = res.data?.consultation || res.data;
         const clientId = request.user?._id;
-        const plannerId = request.planner || request.vendor;
+        const plannerId = user?._id;
         const messageText = `Hi ${
           request.user?.username || "there"
         }, your request has been approved!`;
 
+        if (!clientId || !plannerId) return;
+
         // Save message in backend
         await api.post("/messages", {
-          senderId: plannerId,
+          senderModel: "User",
           recipientId: clientId,
+          recipientModel: "User",
           text: messageText,
         });
 
         // Emit real-time message
-        socketRef.current.emit("send_message", {
+        socketRef.current?.emit("send_message", {
           fromUserId: plannerId,
           toUserId: clientId,
           message: messageText,

@@ -276,7 +276,8 @@ export default function VendorLounge() {
         case "messages":
           return (
             <MessagePanel
-              plannerId={user?._id}
+              currentUserId={user?._id}
+              currentRole="vendor"
               onUnreadCountChange={setUnreadMessagesCount}
             />
           );

@@ -1,4 +1,3 @@
-// src/components/Shared/Chat.jsx
 import React, {
   useState,
   useEffect,
@@ -6,20 +5,38 @@ import React, {
   useCallback,
   useLayoutEffect,
 } from "react";
-import { io } from "socket.io-client";
 import {
   Send,
   Paperclip,
   Smile,
   Mic,
   Loader2,
-  Trash2,
   Check,
   CheckCheck,
 } from "lucide-react";
 import api from "../../utils/axios";
+import {
+  getRealtimeClient,
+  releaseRealtimeClient,
+  normalizeRealtimeMessage,
+  isMessageInConversation,
+  getMessageUserId,
+} from "../../utils/realtime";
 
-const SOCKET_SERVER_URL = "http://localhost:3000";
+const ROLE_TO_MODEL_MAP = {
+  client: "User",
+  vendor: "User",
+  planner: "User",
+};
+
+const appendUniqueMessage = (messages, nextMessage) => {
+  if (!nextMessage) return messages;
+  const nextId = nextMessage._id;
+  if (nextId && messages.some((msg) => msg._id === nextId)) {
+    return messages;
+  }
+  return [...messages, nextMessage];
+};
 
 export default function Chat({
   userId,
@@ -31,8 +48,6 @@ export default function Chat({
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [deletingMessage, setDeletingMessage] = useState(null);
-  const [isOnline, setIsOnline] = useState(false);
   const [typing, setTyping] = useState(false);
 
   const socketRef = useRef(null);
@@ -47,180 +62,129 @@ export default function Chat({
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  // -------------------------------
-  // Socket.IO setup
-  // -------------------------------
   useEffect(() => {
-    if (!userId || !role) return;
+    if (!userId || !role) return () => {};
 
-    const socket = io(SOCKET_SERVER_URL, { autoConnect: false });
+    const socket = getRealtimeClient({ userId, role });
     socketRef.current = socket;
-    socket.connect();
-    socket.emit("join", { userId, role });
 
-    socket.on("receive_message", (data) => {
-      // Only add the message if it's part of the current conversation
-      if (data.fromUserId === recipientId || data.toUserId === recipientId) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            ...data,
-            // A received message is one where the sender is not me.
-            received: data.sender._id !== userId,
-            timestamp: new Date().toISOString(),
-          },
-        ]);
+    const handleReceiveMessage = (payload) => {
+      const normalized = normalizeRealtimeMessage(payload);
+      if (!normalized) return;
+
+      if (
+        !isMessageInConversation({
+          message: normalized,
+          currentUserId: userId,
+          participantId: recipientId,
+        })
+      ) {
+        return;
       }
-    });
 
-    socket.on("user_typing", (data) => {
-      if (data.toUserId === userId && data.isTyping) {
-        setTyping(true);
-        clearTimeout(typingTimeoutRef.current);
-        typingTimeoutRef.current = setTimeout(() => setTyping(false), 1000);
-      }
-    });
+      setMessages((prev) =>
+        appendUniqueMessage(prev, {
+          ...normalized,
+          received: normalized.senderId !== userId,
+          status: normalized.read ? "read" : "delivered",
+          timestamp: normalized.createdAt,
+        })
+      );
+    };
 
-    socket.on("user_online", (data) => {
-      if (data.userId === recipientId) setIsOnline(true);
-    });
-
-    socket.on("user_offline", (data) => {
-      if (data.userId === recipientId) setIsOnline(false);
-    });
+    socket.on("receive_message", handleReceiveMessage);
 
     return () => {
-      socket.off("receive_message");
-      socket.off("user_typing");
-      socket.off("user_online");
-      socket.off("user_offline");
-      socket.disconnect();
+      socket.off("receive_message", handleReceiveMessage);
+      releaseRealtimeClient({ userId, role });
+      socketRef.current = null;
       clearTimeout(typingTimeoutRef.current);
     };
   }, [userId, role, recipientId]);
 
-  // -------------------------------
-  // Fetch message history
-  // -------------------------------
   useEffect(() => {
-    if (!recipientId) return;
+    if (!recipientId || !userId) return;
 
     const fetchMessages = async () => {
       try {
         const res = await api.get(`/messages/history/${recipientId}`);
         if (res.data.success) {
-          const formatted = res.data.data.map((msg) => ({
-            ...msg,
-            // A received message is one where the sender's ID is not my ID.
-            received: msg.sender._id !== userId,
-            status: msg.status || "sent",
-            timestamp: msg.createdAt || msg.timestamp,
-          }));
+          const formatted = (res.data.data || []).map((msg) => {
+            const senderId = getMessageUserId(msg, "sender");
+            return {
+              ...msg,
+              senderId,
+              recipientId: getMessageUserId(msg, "recipient"),
+              received: senderId !== userId,
+              status: msg.read ? "read" : "delivered",
+              timestamp: msg.createdAt || msg.timestamp,
+            };
+          });
           setMessages(formatted);
         }
       } catch (err) {
-        console.error("❌ Failed to fetch messages:", err);
+        console.error("Failed to fetch messages:", err);
       }
     };
 
     fetchMessages();
-  }, [recipientId, userId]); // Dependency array is correct
-
-  // -------------------------------
-  // Send message
-  // -------------------------------
-  const roleToModelMap = {
-    client: "ClientProfile",
-    vendor: "VendorProfile",
-    planner: "PlannerProfile",
-  };
+  }, [recipientId, userId]);
 
   const sendMessage = async () => {
-    if (!input.trim()) return;
-    if (!recipientId) {
-      console.error("❌ No recipientId found. Cannot send message.");
-      return;
-    }
-    if (sending) return;
+    if (!input.trim() || !recipientId || sending || !userId) return;
 
-    const tempMessage = input.trim();
-    setInput(""); // Optimistic UI
+    const tempMessageText = input.trim();
+    setInput("");
     setSending(true);
-
-    // Stop typing indicator
-    socketRef.current?.emit("typing", {
-      toUserId: recipientId,
-      isTyping: false,
-    });
+    setTyping(false);
 
     try {
       const payload = {
-        text: tempMessage,
+        text: tempMessageText,
         recipientId,
-        recipientModel: roleToModelMap[recipientRole] || "User",
-        senderModel: roleToModelMap[role] || "User",
+        recipientModel: ROLE_TO_MODEL_MAP[recipientRole] || "User",
+        senderModel: ROLE_TO_MODEL_MAP[role] || "User",
       };
 
       const res = await api.post("/messages", payload);
-
       if (!res.data.success) {
         throw new Error(res.data.message || "Failed to send message");
       }
 
-      const saved = res.data.message;
+      const saved = normalizeRealtimeMessage(res.data.message);
+      if (!saved) {
+        throw new Error("Message response format not supported");
+      }
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          _id: saved._id,
-          text: saved.text,
-          sender: { _id: userId }, // Mimic the populated sender structure
-          received: false,
-          status: "sent",
-          timestamp: new Date().toISOString(),
-        },
-      ]);
+      const outbound = {
+        ...saved,
+        received: false,
+        status: "sent",
+        timestamp: saved.createdAt || new Date().toISOString(),
+      };
 
-      onMessageSent?.();
+      setMessages((prev) => appendUniqueMessage(prev, outbound));
+
+      socketRef.current?.emit("send_message", {
+        fromUserId: userId,
+        toUserId: recipientId,
+        message: saved.text,
+      });
+
+      onMessageSent?.(outbound);
     } catch (err) {
-      console.error("❌ Failed to send message:", err);
-      setInput(tempMessage); // Restore input if failed
+      console.error("Failed to send message:", err);
+      setInput(tempMessageText);
     } finally {
       setSending(false);
     }
   };
 
-  // -------------------------------
-  // Delete message
-  // -------------------------------
-  const deleteMessage = async (messageId) => {
-    setDeletingMessage(messageId);
-    try {
-      await api.delete(`/messages/${messageId}`);
-      setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
-    } catch (err) {
-      console.error("❌ Failed to delete message:", err);
-    } finally {
-      setDeletingMessage(null);
-    }
-  };
-
-  // -------------------------------
-  // Typing indicator
-  // -------------------------------
   const handleInputChange = (e) => {
     setInput(e.target.value);
-    if (!socketRef.current || !recipientId) return;
-    socketRef.current.emit("typing", { toUserId: recipientId, isTyping: true });
+    setTyping(Boolean(e.target.value.trim()));
     clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = setTimeout(
-      () =>
-        socketRef.current.emit("typing", {
-          toUserId: recipientId,
-          isTyping: false,
-        }),
-      1000
-    );
+    typingTimeoutRef.current = setTimeout(() => setTyping(false), 1000);
   };
 
   const formatTime = (timestamp) =>
@@ -238,39 +202,40 @@ export default function Chat({
     </div>
   );
 
+  const roleLabelMap = {
+    vendor: "Vendor",
+    planner: "Planner",
+    client: "Client",
+  };
+  const roleInitialMap = {
+    vendor: "V",
+    planner: "P",
+    client: "C",
+  };
+
   return (
     <div className="flex flex-col h-full bg-white">
-      {/* Header */}
       <div className="p-4 border-b border-gray-200 bg-white flex items-center gap-3">
         <div className="relative">
           <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
-            {recipientRole === "vendor" ? "V" : "C"}
+            {roleInitialMap[recipientRole] || "U"}
           </div>
-          <div
-            className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${
-              isOnline ? "bg-green-500" : "bg-gray-400"
-            }`}
-          />
+          <div className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white bg-gray-400" />
         </div>
         <div>
           <h3 className="font-semibold text-gray-900">
-            {recipientRole === "vendor" ? "Vendor" : "Client"}
+            {roleLabelMap[recipientRole] || "User"}
           </h3>
-          <p className="text-sm text-gray-500">
-            {typing ? "typing..." : isOnline ? "online" : "offline"}
-          </p>
+          <p className="text-sm text-gray-500">{typing ? "typing..." : "online"}</p>
         </div>
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
         <div className="space-y-2">
           {messages.map((msg, idx) => (
             <div
               key={msg._id || idx}
-              className={`flex ${
-                msg.received ? "justify-start" : "justify-end"
-              }`}
+              className={`flex ${msg.received ? "justify-start" : "justify-end"}`}
             >
               <div
                 className={`relative group max-w-[70%] ${
@@ -281,24 +246,8 @@ export default function Chat({
               >
                 <div className="flex items-end gap-2">
                   <p className="text-sm break-words">{msg.text}</p>
-                  <MessageStatus
-                    status={msg.status}
-                    timestamp={msg.timestamp}
-                  />
+                  <MessageStatus status={msg.status} timestamp={msg.timestamp} />
                 </div>
-                {!msg.received && (
-                  <button
-                    onClick={() => deleteMessage(msg._id)}
-                    disabled={deletingMessage === msg._id}
-                    className="absolute -left-8 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 bg-white border border-gray-200 rounded-full shadow-sm transition-all duration-200 hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
-                  >
-                    {deletingMessage === msg._id ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-3 h-3" />
-                    )}
-                  </button>
-                )}
               </div>
             </div>
           ))}
@@ -306,7 +255,6 @@ export default function Chat({
         </div>
       </div>
 
-      {/* Input */}
       <div className="p-4 border-t border-gray-200 bg-white flex items-center gap-2">
         <button className="p-2 text-gray-500 hover:text-gray-700 transition-colors">
           <Paperclip className="w-5 h-5" />
