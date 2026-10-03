@@ -17,6 +17,14 @@ const eventSchema = new Schema({
     enum: ["upcoming", "ongoing", "completed", "cancelled"],
     default: "upcoming",
   },
+  payments: [
+    {
+      amount: { type: Number, required: true, min: 0 },
+      status: { type: String, enum: ["pending", "paid"], default: "pending" },
+      method: { type: String },
+      date: { type: Date, default: Date.now },
+    },
+  ],
   vendors: [vendorAssignmentSchema],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
@@ -38,11 +46,25 @@ const plannerDashboardSchema = new Schema(
   {
     planner: {
       type: Schema.Types.ObjectId,
-      ref: "Planner",
+      ref: "User",
       required: true,
       unique: true,
     },
     events: [eventSchema],
+    metrics: {
+      totalEvents: { type: Number, default: 0 },
+      completedEvents: { type: Number, default: 0 },
+      pendingPayments: { type: Number, default: 0 },
+    },
+    ratings: [
+      {
+        client: { type: Schema.Types.ObjectId, ref: "User", required: true },
+        score: { type: Number, required: true, min: 1, max: 5 },
+        comment: { type: String },
+        date: { type: Date, default: Date.now },
+      },
+    ],
+    averageRating: { type: Number, default: 0 },
     notifications: [notificationSchema],
 
     upcomingDeadlines: [
@@ -53,7 +75,7 @@ const plannerDashboardSchema = new Schema(
       },
     ],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("PlannerDashboard", plannerDashboardSchema);

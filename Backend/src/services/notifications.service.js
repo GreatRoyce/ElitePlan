@@ -1,6 +1,13 @@
 const Notification = require("../models/notification.model");
 
-const createNotification = async (recipientId, recipientModel, senderProfile, message, type) => {
+const createNotification = async (
+  recipientId,
+  recipientModel,
+  senderProfile,
+  message,
+  type,
+  imageCover = null
+) => {
   try {
     await Notification.create({
       user: recipientId,              // Receiver
@@ -9,6 +16,7 @@ const createNotification = async (recipientId, recipientModel, senderProfile, me
       senderModel: senderProfile.profileType || "User",
       message,
       type,
+      imageCover: imageCover || senderProfile.avatarUrl || null,
     });
   } catch (error) {
     console.error("❌ Error creating notification:", error);

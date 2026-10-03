@@ -34,7 +34,10 @@ const steps = [
 const footerSections = [
   { title: "Company", links: ["About Us", "Blog", "Careers", "Press"] },
   { title: "Resources", links: ["Pricing", "Help Center", "Contact Us"] },
-  { title: "Legal", links: ["Terms of Service", "Privacy Policy", "Cookie Policy"] },
+  {
+    title: "Legal",
+    links: ["Terms of Service", "Privacy Policy", "Cookie Policy"],
+  },
 ];
 
 const socials = [
@@ -81,8 +84,8 @@ export default function HowItWorks() {
             transition={{ delay: 0.2 }}
             className="text-gray-600 text-base max-w-2xl mx-auto mb-12"
           >
-            A simple, structured journey from idea to celebration — built to make
-            planning effortless.
+            A simple, structured journey from idea to celebration — built to
+            make planning effortless.
           </MotionP>
 
           <MotionDiv
@@ -146,7 +149,9 @@ export default function HowItWorks() {
           {/* Links */}
           {footerSections.map((section) => (
             <div key={section.title}>
-              <h4 className="text-brand-gold font-semibold mb-3">{section.title}</h4>
+              <h4 className="text-brand-gold font-semibold mb-3">
+                {section.title}
+              </h4>
               <ul className="space-y-2">
                 {section.links.map((link) => (
                   <li
@@ -183,16 +188,11 @@ export default function HowItWorks() {
           className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
           onClick={() => setShowSignup(false)}
         >
-          <div
-            className="relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <SignUpForm />
+          <div className="relative" onClick={(e) => e.stopPropagation()}>
+            <SignUpForm onClose={() => setShowSignup(false)} />
           </div>
         </div>
       )}
     </div>
   );
 }
-
-

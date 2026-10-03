@@ -1,15 +1,20 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { X } from "lucide-react";
+import { MdBusiness, MdPerson, MdStore } from "react-icons/md";
 import api from "../../utils/axios";
 
-function SignUpForm() {
+function SignUpForm({ layout = "modal", onClose, onSuccess }) {
   const navigate = useNavigate();
   const location = useLocation();
   const modalRef = useRef(null);
+  const isPage = layout === "page";
 
   const [role, setRole] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -80,17 +85,41 @@ function SignUpForm() {
 
   // 🖱️ Close modal when clicking outside
   useEffect(() => {
+    if (!role || isPage) return;
+
     const handleClickOutside = (e) => {
       if (modalRef.current && !modalRef.current.contains(e.target)) setRole("");
     };
-    if (role) document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [role]);
+  }, [role, isPage]);
+
+  useEffect(() => {
+    if (!onClose) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   const roleConfig = {
-    client: { icon: "💍", color: "from-brand-navy to-brand-royal", bg: "bg-brand-navy" },
-    planner: { icon: "📋", color: "from-brand-royal to-brand-navy", bg: "bg-brand-royal" },
-    vendor: { icon: "🏢", color: "from-brand-navy to-brand-royal", bg: "bg-brand-navy" },
+    client: {
+      icon: <MdPerson className="text-2xl" />,
+      color: "from-brand-navy to-brand-royal",
+      bg: "bg-gradient-to-r from-brand-navy to-brand-royal",
+    },
+    planner: {
+      icon: <MdBusiness className="text-2xl" />,
+      color: "from-brand-royal to-brand-navy",
+      bg: "bg-gradient-to-r from-brand-royal to-brand-navy",
+    },
+    vendor: {
+      icon: <MdStore className="text-2xl" />,
+      color: "from-brand-navy to-brand-royal",
+      bg: "bg-gradient-to-r from-brand-navy to-brand-royal",
+    },
   };
 
   const userTypes = [
@@ -105,16 +134,16 @@ function SignUpForm() {
       title: "Planner",
       desc: "Organize unforgettable experiences",
       fields: [
-        { 
-          name: "businessname", 
+        {
+          name: "businessname",
           label: "Business Name",
-          type: "text"
+          type: "text",
         },
-        { 
-          name: "specialization", 
+        {
+          name: "specialization",
           label: "Specialization",
           type: "select",
-          options: specializationOptions
+          options: specializationOptions,
         },
       ],
     },
@@ -123,22 +152,22 @@ function SignUpForm() {
       title: "Vendor",
       desc: "Showcase your services to planners and clients",
       fields: [
-        { 
-          name: "companyname", 
+        {
+          name: "companyname",
           label: "Company Name",
-          type: "text"
+          type: "text",
         },
-        { 
-          name: "servicetype", 
+        {
+          name: "servicetype",
           label: "Service Type",
           type: "select",
-          options: serviceTypeOptions
+          options: serviceTypeOptions,
         },
-        { 
-          name: "category", 
+        {
+          name: "category",
           label: "Category Type",
           type: "select",
-          options: categoryOptions
+          options: categoryOptions,
         },
       ],
     },
@@ -151,13 +180,25 @@ function SignUpForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!role) return setMessage("Please select a role first.");
+    if (!role) {
+      setMessageType("error");
+      return setMessage("Please select a role first.");
+    }
+    setIsSubmitting(true);
     try {
       const res = await api.post("/auth/register", { ...formData, role });
+      setMessageType("success");
       setMessage(res.data.message || "Registration successful!");
-      setTimeout(() => navigate("/login"), 2000);
+      setTimeout(() => {
+        if (onSuccess) onSuccess();
+        else navigate("/login");
+      }, 2000);
     } catch (err) {
-      setMessage(err.response?.data?.message || "Error registering, try again.");
+      setMessageType("error");
+      setMessage(
+        err.response?.data?.message || "Error registering, try again.",
+      );
+      setIsSubmitting(false);
     }
   };
 
@@ -194,28 +235,53 @@ function SignUpForm() {
   };
 
   return (
-    <section className="min-h-[50vh] bg-gradient-to-br from-white via-slate-50 to-white flex items-center justify-center p-6">
-      <div className="max-w-6xl w-full">
+    <section
+      className={
+        isPage
+          ? "min-h-screen bg-gradient-to-br from-brand-ivory via-white to-slate-50 py-8"
+          : "min-h-[50vh] bg-gradient-to-br from-white via-slate-50 to-white flex items-center justify-center p-6"
+      }
+    >
+      <div
+        className={
+          isPage
+            ? "relative max-w-7xl mx-auto px-4"
+            : "relative max-w-6xl w-full"
+        }
+      >
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-3xl md:text-4xl font-bold text-brand-navy mb-3">
-            Join Our Network
+            Join ElitePlan
           </h1>
           <p className="text-slate-600 text-[14px] max-w-2xl mx-auto">
-            Connect with clients, planners, and vendors to create seamless events.
+            Connect with trusted professionals and bring your event plans to
+            life.
           </p>
+          {onClose && (
+            <button
+              type="button"
+              aria-label="Close signup"
+              title="Close signup"
+              onClick={onClose}
+              className="absolute right-0 top-0 p-2 text-slate-500 hover:text-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-royal rounded-md"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          )}
         </div>
 
         {/* === ROLE SELECTION === */}
         {!role ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto">
             {userTypes.map((u) => (
-              <div
+              <button
                 key={u.id}
-                className="group cursor-pointer"
+                type="button"
+                className="group w-full cursor-pointer text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-royal/30 rounded-xl"
                 onClick={() => setRole(u.id)}
               >
-                <div className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md border border-slate-200 hover:border-brand-navy transition-all duration-300 flex flex-col h-full">
+                <div className="bg-white rounded-xl p-6 shadow-sm group-hover:shadow-md border border-slate-200 group-hover:border-brand-navy transition-all duration-300 flex flex-col h-full">
                   <div
                     className={`w-12 h-12 rounded-lg ${roleConfig[u.id].bg} flex items-center justify-center text-white text-xl mb-4`}
                   >
@@ -227,23 +293,44 @@ function SignUpForm() {
                   <p className="text-slate-600 text-[14px] mb-4 flex-grow leading-snug">
                     {u.desc}
                   </p>
-                  <button
-                    className={`w-full py-2.5 rounded-lg ${roleConfig[u.id].bg} text-white text-[12px] font-bold hover:opacity-90`}
+                  <span
+                    className={`w-full py-2.5 rounded-lg ${roleConfig[u.id].bg} text-white text-center text-[12px] font-bold group-hover:opacity-90`}
                   >
                     Register as {u.title}
-                  </button>
+                  </span>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         ) : (
           /* === COMPACT FORM CARD === */
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-3">
+          <div
+            className={
+              isPage
+                ? "w-full max-w-2xl mx-auto"
+                : "fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-3"
+            }
+          >
             <form
               ref={modalRef}
               onSubmit={handleSubmit}
-              className="w-full max-w-3xl bg-white rounded-xl shadow-xl border border-slate-200 animate-scaleIn p-4"
+              className={`relative w-full ${
+                isPage
+                  ? "max-w-2xl"
+                  : "max-w-3xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto overscroll-contain"
+              } bg-white rounded-xl shadow-xl border border-slate-200 animate-scaleIn p-4`}
             >
+              {onClose && (
+                <button
+                  type="button"
+                  aria-label="Close signup"
+                  title="Close signup"
+                  onClick={onClose}
+                  className="absolute right-6 top-6 z-10 p-1 text-white hover:text-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white rounded-md"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              )}
               {/* Header */}
               <div
                 className={`bg-gradient-to-r ${roleConfig[role].color} text-white rounded-lg p-4 mb-4`}
@@ -274,6 +361,7 @@ function SignUpForm() {
                     <input
                       name="username"
                       type="text"
+                      autoComplete="username"
                       value={formData.username}
                       onChange={handleChange}
                       className="w-full border border-slate-300 rounded-md p-2.5 focus:ring-2 focus:ring-brand-royal outline-none"
@@ -288,6 +376,7 @@ function SignUpForm() {
                     <input
                       name="email"
                       type="email"
+                      autoComplete="email"
                       value={formData.email}
                       onChange={handleChange}
                       className="w-full border border-slate-300 rounded-md p-2.5 focus:ring-2 focus:ring-brand-royal outline-none"
@@ -302,6 +391,7 @@ function SignUpForm() {
                     <input
                       name="phone"
                       type="tel"
+                      autoComplete="tel"
                       value={formData.phone}
                       onChange={handleChange}
                       className="w-full border border-slate-300 rounded-md p-2.5 focus:ring-2 focus:ring-brand-royal outline-none"
@@ -320,6 +410,8 @@ function SignUpForm() {
                       <input
                         type={showPassword ? "text" : "password"}
                         name="password"
+                        autoComplete="new-password"
+                        minLength={6}
                         value={formData.password}
                         onChange={handleChange}
                         className="w-full border border-slate-300 rounded-md p-2.5 pr-16 focus:ring-2 focus:ring-brand-royal outline-none"
@@ -333,6 +425,9 @@ function SignUpForm() {
                         {showPassword ? "Hide" : "Show"}
                       </button>
                     </div>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Use at least 6 characters.
+                    </p>
                   </div>
 
                   {currentRole?.fields.map((field) => (
@@ -368,9 +463,10 @@ function SignUpForm() {
               <div className="mt-4 flex flex-col md:flex-row items-center justify-between gap-3">
                 <button
                   type="submit"
-                  className={`w-full md:w-auto px-6 py-2.5 rounded-md text-white text-[12px] font-medium ${roleConfig[role].bg} hover:opacity-90`}
+                  disabled={isSubmitting}
+                  className={`w-full md:w-auto px-6 py-2.5 rounded-md text-white text-[12px] font-medium ${roleConfig[role].bg} hover:opacity-90 disabled:cursor-wait disabled:opacity-60`}
                 >
-                  Register
+                  {isSubmitting ? "Creating account..." : "Register"}
                 </button>
                 <button
                   type="button"
@@ -383,8 +479,9 @@ function SignUpForm() {
 
               {message && (
                 <div
+                  role={messageType === "error" ? "alert" : "status"}
                   className={`mt-4 text-center p-2.5 rounded-md text-[13px] font-medium ${
-                    message.includes("Error")
+                    messageType === "error"
                       ? "bg-red-50 text-red-600"
                       : "bg-green-50 text-green-600"
                   }`}

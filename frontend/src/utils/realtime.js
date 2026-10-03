@@ -34,6 +34,7 @@ export const getRealtimeClient = ({ userId, role }) => {
   const socket = io(getRealtimeBaseUrl(), {
     autoConnect: false,
     withCredentials: true,
+    auth: (callback) => callback({ token: localStorage.getItem("token") }),
     transports: ["websocket", "polling"],
     reconnection: true,
     reconnectionAttempts: Infinity,
@@ -42,17 +43,11 @@ export const getRealtimeClient = ({ userId, role }) => {
     timeout: 10000,
   });
 
-  const handleConnect = () => {
-    socket.emit("join", { userId, role });
-  };
-
-  socket.on("connect", handleConnect);
   socket.connect();
 
   clients.set(key, {
     socket,
     refs: 1,
-    teardown: () => socket.off("connect", handleConnect),
   });
 
   return socket;
@@ -68,7 +63,6 @@ export const releaseRealtimeClient = ({ userId, role }) => {
   existing.refs -= 1;
   if (existing.refs > 0) return;
 
-  existing.teardown?.();
   existing.socket.disconnect();
   clients.delete(key);
 };
@@ -85,7 +79,8 @@ export const normalizeRealtimeMessage = (payload) => {
   if (!payload || typeof payload !== "object") return null;
 
   const senderId = getMessageUserId(payload, "sender") || payload.fromUserId;
-  const recipientId = getMessageUserId(payload, "recipient") || payload.toUserId;
+  const recipientId =
+    getMessageUserId(payload, "recipient") || payload.toUserId;
   const text = payload.text || payload.message || "";
 
   if (!senderId || !recipientId || !text) return null;
@@ -103,7 +98,8 @@ export const normalizeRealtimeMessage = (payload) => {
     recipientId,
     read: Boolean(payload.read),
     createdAt: payload.createdAt || new Date().toISOString(),
-    updatedAt: payload.updatedAt || payload.createdAt || new Date().toISOString(),
+    updatedAt:
+      payload.updatedAt || payload.createdAt || new Date().toISOString(),
   };
 };
 
@@ -115,7 +111,9 @@ export const isMessageInConversation = ({
   if (!message || !currentUserId || !participantId) return false;
 
   const senderId =
-    getMessageUserId(message, "sender") || message.senderId || message.fromUserId;
+    getMessageUserId(message, "sender") ||
+    message.senderId ||
+    message.fromUserId;
   const recipientId =
     getMessageUserId(message, "recipient") ||
     message.recipientId ||

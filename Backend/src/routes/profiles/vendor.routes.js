@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const upload = require("../../../multer/multer");
+const upload = require("../../config/multer");
 const authMiddleware = require("../../middleware/authMiddleware");
 
 const {
@@ -11,7 +11,7 @@ const {
   getVendorProfiles,
   getVendorProfileById,
   getVendorsByCategory,
-} = require("../../controllers/usersProfileController/vendorProfile.controller");
+} = require("../../controllers/profiles/vendorProfile.controller");
 
 // VENDOR AUTH ROUTES
 router.get("/me", authMiddleware(["vendor"]), getCurrentVendorProfile);

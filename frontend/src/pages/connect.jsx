@@ -283,7 +283,11 @@ function Connect() {
             <button className="mt-8 sm:mt-12 text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold font-waterfall text-center w-full lg:absolute lg:top-[80vh] lg:right-10 lg:w-auto">
               Book yours Now
             </button>
-            <img className="hidden lg:block absolute top-[60vh] right-6 h-20" src={rip} alt="" />
+            <img
+              className="hidden lg:block absolute top-[60vh] right-6 h-20"
+              src={rip}
+              alt=""
+            />
           </section>
 
           <section className="py-12 sm:py-16 bg-white">
@@ -323,9 +327,10 @@ function Connect() {
               <p className="text-xl sm:text-2xl md:text-3xl font-semibold text-white leading-tight">
                 Ready to plan your perfect event?
               </p>
-              
+
               <p className="text-white font-thin text-base sm:text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-                Join ElitePlan today and experience the future of event planning.
+                Join ElitePlan today and experience the future of event
+                planning.
               </p>
 
               <button
@@ -340,7 +345,11 @@ function Connect() {
           <footer className="py-12 sm:py-16 bg-brand-navy">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 sm:gap-8 lg:gap-10 px-4 sm:px-8 lg:px-20 max-w-7xl mx-auto">
               <div className="flex flex-col space-y-4 sm:space-y-6">
-                <img className="hidden sm:h-20 lg:h-24" src={eliteplan} alt="ElitePlan" />
+                <img
+                  className="hidden sm:h-20 lg:h-24"
+                  src={eliteplan}
+                  alt="ElitePlan"
+                />
                 <div className="flex items-start gap-2 text-brand-ivory">
                   <FaRegCopyright className="h-5 sm:h-6 mt-1 flex-shrink-0" />
                   <p className="text-sm sm:text-base">
@@ -349,9 +358,11 @@ function Connect() {
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex flex-col space-y-3 sm:space-y-4">
-                <p className="text-brand-gold text-lg sm:text-xl font-semibold">Company</p>
+                <p className="text-brand-gold text-lg sm:text-xl font-semibold">
+                  Company
+                </p>
                 <ul className="space-y-2 text-brand-ivory text-sm sm:text-base">
                   <li>About Us</li>
                   <li>Blog</li>
@@ -359,27 +370,33 @@ function Connect() {
                   <li>Press</li>
                 </ul>
               </div>
-              
+
               <div className="flex flex-col space-y-3 sm:space-y-4">
-                <p className="text-brand-gold text-lg sm:text-xl font-semibold">Resources</p>
+                <p className="text-brand-gold text-lg sm:text-xl font-semibold">
+                  Resources
+                </p>
                 <ul className="space-y-2 text-brand-ivory text-sm sm:text-base">
                   <li>Pricing</li>
                   <li>Help Center</li>
                   <li>Contact Us</li>
                 </ul>
               </div>
-              
+
               <div className="flex flex-col space-y-3 sm:space-y-4">
-                <p className="text-brand-gold text-lg sm:text-xl font-semibold">Legal</p>
+                <p className="text-brand-gold text-lg sm:text-xl font-semibold">
+                  Legal
+                </p>
                 <ul className="space-y-2 text-brand-ivory text-sm sm:text-base">
                   <li>Terms of Service</li>
                   <li>Privacy Policy</li>
                   <li>Cookie Policy</li>
                 </ul>
               </div>
-              
+
               <div className="flex flex-col space-y-3 sm:space-y-4">
-                <p className="text-brand-gold text-lg sm:text-xl font-semibold">Follow Us</p>
+                <p className="text-brand-gold text-lg sm:text-xl font-semibold">
+                  Follow Us
+                </p>
                 <ul className="flex space-x-4 text-2xl sm:text-3xl lg:text-4xl text-brand-ivory">
                   <FaSquareFacebook />
                   <FaSquareInstagram />
@@ -398,7 +415,7 @@ function Connect() {
                 className="relative w-full max-w-md"
                 onClick={(e) => e.stopPropagation()}
               >
-                <SignUpForm />
+                <SignUpForm onClose={() => setShowSignup(false)} />
               </div>
             </div>
           )}

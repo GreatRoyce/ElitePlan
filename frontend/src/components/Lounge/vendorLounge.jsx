@@ -132,14 +132,16 @@ export default function VendorLounge() {
     if (!socketRef.current) {
       const backendUrl =
         import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
-      socketRef.current = io(backendUrl, { withCredentials: true });
+      socketRef.current = io(backendUrl, {
+        withCredentials: true,
+        auth: (callback) => callback({ token: localStorage.getItem("token") }),
+      });
     }
 
     const socket = socketRef.current;
 
     const handleConnect = () => {
       log("Vendor connected to WebSocket server");
-      socket.emit("join", { userId: user._id, role: user.role });
     };
 
     const handleNotification = (notification) => {
@@ -234,7 +236,7 @@ export default function VendorLounge() {
       notifications: unreadNotificationsCount,
       events: dashboard?.assignedEvents?.length || 0,
     }),
-    [dashboard, unreadNotificationsCount, unreadMessagesCount]
+    [dashboard, unreadNotificationsCount, unreadMessagesCount],
   );
 
   const handleSectionChange = useCallback(
@@ -244,7 +246,7 @@ export default function VendorLounge() {
         setIsMobileOpen(false);
       }
     },
-    [isMobileOpen]
+    [isMobileOpen],
   );
 
   const handleProfileSave = useCallback((updatedProfileData) => {

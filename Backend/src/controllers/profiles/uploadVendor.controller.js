@@ -1,4 +1,4 @@
-// src/controllers/usersProfileController/uploadVendor.controller.js
+// src/controllers/profiles/uploadVendor.controller.js
 const VendorProfile = require("../../models/vendorProfile.model");
 
 // ✅ Normalize file path for cross-platform compatibility

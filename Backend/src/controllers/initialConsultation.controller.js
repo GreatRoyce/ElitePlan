@@ -1,8 +1,9 @@
 const Consultation = require("../models/initialConsultation.model");
-const { createNotification } = require("../helpers/notificationHelper");
+const { createNotification } = require("../services/notifications.service");
 const PlannerProfile = require("../models/plannerProfile.model");
 const VendorProfile = require("../models/vendorProfile.model");
 const Message = require("../models/message.model");
+const User = require("../models/user.model");
 
 // ========================================================
 // Create Consultation Request
@@ -44,7 +45,7 @@ const createConsultation = async (req, res) => {
       recipientModel,
       { _id: senderProfile._id, profileType: senderProfile.profileType },
       `You have a new consultation request from ${senderProfile.fullName}.`,
-      "consultation"
+      "consultation",
     );
 
     res.status(201).json({ success: true, consultation });
@@ -107,7 +108,7 @@ const updateConsultationStatus = async (req, res) => {
         approvedAt: status === "approved" ? new Date() : undefined,
         rejectedAt: status === "declined" ? new Date() : undefined,
       },
-      { new: true }
+      { new: true },
     )
       .populate("client", "_id firstName username email imageCover") // virtual
       .populate("receiver", "_id firstName username email imageCover") // virtual
@@ -130,32 +131,32 @@ const updateConsultationStatus = async (req, res) => {
       updated.user;
 
     if (status === "approved" && client?._id && sender?._id) {
-      const senderModel =
-        updated.targetType === "PlannerProfile"
-          ? "PlannerProfile"
-          : updated.targetType === "VendorProfile"
-          ? "VendorProfile"
-          : "User";
-
-      // Create system message
       const systemMessage = await Message.create({
         sender: sender._id,
-        senderModel,
+        senderModel: "User",
         recipient: client._id,
-        recipientModel: "ClientProfile",
+        recipientModel: "User",
         text: `Hi ${client.firstName || client.username}, your request has been approved.`,
       });
 
-      // Emit real-time message via Socket.IO if connected
       const io = req.app.get("io");
       const connectedUsers = req.app.get("connectedUsers") || {};
-      const clientSocket = connectedUsers[client._id];
+      const clientSocket = connectedUsers[client._id.toString()];
 
       if (clientSocket) {
-        io.to(clientSocket.socketId).emit("receive_message", {
-          ...systemMessage.toObject(),
-          received: true,
-        });
+        const populatedMessage = await Message.findById(systemMessage._id)
+          .populate({
+            path: "sender",
+            model: User,
+            select: "username firstName name imageCover role",
+          })
+          .populate({
+            path: "recipient",
+            model: User,
+            select: "username firstName name imageCover role",
+          })
+          .lean();
+        io.to(clientSocket.socketId).emit("receive_message", populatedMessage);
       }
     }
 
@@ -165,7 +166,6 @@ const updateConsultationStatus = async (req, res) => {
     res.status(500).json({ message: "Error updating consultation" });
   }
 };
-
 
 // ========================================================
 // Delete Consultation

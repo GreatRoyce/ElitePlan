@@ -1,37 +1,16 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { Check, X, User, Calendar, Loader2, MapPin, Users } from "lucide-react";
 import api from "../../../utils/axios";
 import squeeze from "../../../assets/squeeze.png";
-import { useAuth } from "../../../context/authStore";
 import { log, error as logError } from "../../../utils/logger";
-import { getRealtimeClient, releaseRealtimeClient } from "../../../utils/realtime";
 
-export default function PendingRequests({ vendorId }) {
-  const { user } = useAuth();
+export default function PendingRequests() {
   const [requests, setRequests] = useState([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [actionType, setActionType] = useState(null);
 
-  const socketRef = useRef(null);
-
-  const effectiveVendorId = vendorId || user?._id;
-
-  // Step 1: Connect Socket.IO for real-time messages
-  useEffect(() => {
-    if (!effectiveVendorId) return () => {};
-    socketRef.current = getRealtimeClient({
-      userId: effectiveVendorId,
-      role: "vendor",
-    });
-
-    return () => {
-      releaseRealtimeClient({ userId: effectiveVendorId, role: "vendor" });
-      socketRef.current = null;
-    };
-  }, [effectiveVendorId]);
-
-  // Step 2: Fetch pending requests
+  // Fetch pending requests
   useEffect(() => {
     const fetchPending = async () => {
       setLoadingRequests(true);
@@ -49,7 +28,7 @@ export default function PendingRequests({ vendorId }) {
     fetchPending();
   }, []);
 
-  // Step 3: Handle approve/decline
+  // Handle approve/decline
   const handleDecision = async (id, status) => {
     try {
       log(`Updating request ${id} -> ${status}`);
@@ -70,17 +49,10 @@ export default function PendingRequests({ vendorId }) {
             ? request.targetUser?._id
             : undefined);
 
-        const vendorId =
-          request.vendor?._id ||
-          request.user?._id ||
-          (request.targetType === "VendorProfile"
-            ? request.targetUser?._id
-            : undefined);
-
         const senderModel = "User";
         const recipientModel = "User";
 
-        if (clientId && effectiveVendorId) {
+        if (clientId) {
           const messageText = `Hi ${
             request.client?.name || request.user?.username || "there"
           }, your request has been approved!`;
@@ -93,14 +65,6 @@ export default function PendingRequests({ vendorId }) {
           });
 
           log(`Auto-message saved for client ${clientId}`);
-
-          socketRef.current?.emit("send_message", {
-            fromUserId: effectiveVendorId,
-            toUserId: clientId,
-            message: messageText,
-          });
-
-          log("Auto-message emitted via Socket.IO");
         }
       }
     } catch (err) {
@@ -194,7 +158,7 @@ export default function PendingRequests({ vendorId }) {
                 onClick={() =>
                   handleDecision(
                     selectedRequest._id,
-                    actionType === "approve" ? "approved" : "declined"
+                    actionType === "approve" ? "approved" : "declined",
                   )
                 }
                 className={`flex items-center gap-1 px-4 py-2 rounded-lg text-white ${
@@ -203,7 +167,11 @@ export default function PendingRequests({ vendorId }) {
                     : "bg-brand-royal hover:bg-brand-royal/70"
                 }`}
               >
-                {actionType === "approve" ? <Check size={16} /> : <X size={16} />}
+                {actionType === "approve" ? (
+                  <Check size={16} />
+                ) : (
+                  <X size={16} />
+                )}
                 {actionType === "approve" ? "Approve" : "Decline"}
               </button>
 

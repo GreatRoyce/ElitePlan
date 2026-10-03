@@ -1,12 +1,12 @@
-// src/routes/usersRoutesController/uploadVendor.routes.js
+// src/routes/uploads/vendor.routes.js
 const express = require("express");
 const router = express.Router();
-const upload = require("../../../multer/multer");
+const upload = require("../../config/multer");
 const authMiddleware = require("../../middleware/authMiddleware");
 const {
   uploadVendorProfileImage,
   uploadVendorGallery,
-} = require("../../controllers/usersProfileController/uploadVendor.controller");
+} = require("../../controllers/profiles/uploadVendor.controller");
 
 // ✅ Upload vendor profile image
 router.post(

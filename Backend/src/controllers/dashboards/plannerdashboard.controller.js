@@ -1,13 +1,15 @@
-const PlannerDashboard = require("../../models/dashboard/plannerdashboard.model");
-const VendorDashboard = require("../../models/dashboard/vendordashboard.model");
+const PlannerDashboard = require("../../models/dashboards/plannerdashboard.model");
+const VendorDashboard = require("../../models/dashboards/vendordashboard.model");
 const Notification = require("../../models/notification.model");
 const InitialConsultation = require("../../models/initialConsultation.model");
 const VendorProfile = require("../../models/vendorProfile.model");
+const PlannerProfile = require("../../models/plannerProfile.model");
 const Message = require("../../models/message.model");
+const User = require("../../models/user.model");
 const {
   updateDashboard,
   addPayment,
-} = require("../../helpers/planner/plannerHelpers");
+} = require("../../services/planner/planner.service");
 const { getUserProfile } = require("../notification.controller");
 
 // -------------------- DASHBOARD --------------------
@@ -33,7 +35,10 @@ const getDashboard = async (req, res) => {
       });
     }
 
-    // await updateDashboard(dashboard); // Temporarily disabled to fix loading issue
+    updateDashboard(dashboard);
+    const plannerProfile = await PlannerProfile.findOne({ userId: plannerId })
+      .select("companyName rating")
+      .lean();
 
     const pendingRequests = await InitialConsultation.find({
       targetUser: plannerId,
@@ -42,6 +47,11 @@ const getDashboard = async (req, res) => {
 
     const dashboardObject = dashboard.toObject();
     dashboardObject.pendingRequests = pendingRequests;
+    dashboardObject.plannerProfile = plannerProfile;
+    dashboardObject.companyName =
+      plannerProfile?.companyName || req.user.username || "Planner";
+    dashboardObject.averageRating =
+      dashboard.averageRating || plannerProfile?.rating || 0;
 
     res.json({ success: true, data: dashboardObject });
   } catch (error) {
@@ -150,7 +160,7 @@ const addRating = async (req, res) => {
         .json({ success: false, message: "Dashboard not found" });
 
     const existingRating = dashboard.ratings.find(
-      (r) => r.client.toString() === clientId
+      (r) => r.client.toString() === clientId,
     );
     if (existingRating) {
       existingRating.score = Number(score);
@@ -201,7 +211,7 @@ const recruitVendor = async (req, res) => {
         .json({ success: false, message: "Event not found" });
 
     const alreadyAdded = event.vendors.some(
-      (v) => v.vendor.toString() === vendorId
+      (v) => v.vendor.toString() === vendorId,
     );
     if (alreadyAdded)
       return res
@@ -222,7 +232,7 @@ const recruitVendor = async (req, res) => {
       await vendorDashboard.save();
     }
 
-    const vendorProfile = (await VendorProfile.findOne({ user: vendorId })
+    const vendorProfile = (await VendorProfile.findOne({ userId: vendorId })
       .select("_id")
       .lean()) || { _id: vendorId };
 
@@ -257,16 +267,25 @@ const getPlannerConversations = async (req, res) => {
       $or: [{ sender: plannerId }, { recipient: plannerId }],
     })
       .sort({ createdAt: -1 })
-      .populate("sender", "username firstName imageCover")
-      .populate("recipient", "username firstName imageCover")
+      .populate({
+        path: "sender",
+        model: User,
+        select: "username firstName imageCover role",
+      })
+      .populate({
+        path: "recipient",
+        model: User,
+        select: "username firstName imageCover role",
+      })
       .lean();
 
     const conversationsMap = {};
     messages.forEach((msg) => {
       const other =
-        msg.sender._id.toString() === plannerId.toString()
+        msg.sender?._id?.toString() === plannerId.toString()
           ? msg.recipient
           : msg.sender;
+      if (!other?._id) return;
       const otherId = other._id.toString();
 
       if (!conversationsMap[otherId]) {
@@ -300,18 +319,31 @@ const sendPlannerMessage = async (req, res) => {
     if (!recipientId || !text)
       return res.status(400).json({ message: "recipientId and text required" });
 
+    const recipient = await User.findById(recipientId).select("_id");
+    if (!recipient) {
+      return res.status(404).json({ message: "Recipient not found" });
+    }
+
     const message = await Message.create({
       sender: plannerId,
-      senderModel: "PlannerProfile",
-      recipient: recipientId,
-      recipientModel: "ClientProfile",
+      senderModel: "User",
+      recipient: recipient._id,
+      recipientModel: "User",
       text,
     });
 
-    const populated = await message
-      .populate("sender", "username name imageCover")
-      .populate("recipient", "username name imageCover")
-      .execPopulate();
+    const populated = await Message.findById(message._id)
+      .populate({
+        path: "sender",
+        model: User,
+        select: "username name imageCover role",
+      })
+      .populate({
+        path: "recipient",
+        model: User,
+        select: "username name imageCover role",
+      })
+      .lean();
 
     const io = req.app.get("io");
     const connectedUsers = req.app.get("connectedUsers") || {};

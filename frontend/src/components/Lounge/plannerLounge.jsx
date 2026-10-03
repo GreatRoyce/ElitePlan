@@ -39,7 +39,9 @@ export default function PlannerLounge() {
       }
     } catch (err) {
       logError("Error fetching planner dashboard:", err);
-      setError(getApiErrorMessage(err, "Server error while fetching dashboard."));
+      setError(
+        getApiErrorMessage(err, "Server error while fetching dashboard."),
+      );
     } finally {
       setLoading(false);
     }
@@ -55,14 +57,16 @@ export default function PlannerLounge() {
     if (!socketRef.current) {
       const backendUrl =
         import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
-      socketRef.current = io(backendUrl, { withCredentials: true });
+      socketRef.current = io(backendUrl, {
+        withCredentials: true,
+        auth: (callback) => callback({ token: localStorage.getItem("token") }),
+      });
     }
 
     const socket = socketRef.current;
 
     const handleConnect = () => {
       log("Planner connected to WebSocket server");
-      socket.emit("join", { userId: user._id, role: user.role });
     };
 
     const handleNotification = () => {

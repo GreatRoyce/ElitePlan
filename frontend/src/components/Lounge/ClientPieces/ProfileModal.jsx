@@ -112,7 +112,7 @@ export default function ProfileModal({
               )}
               <div className="bg-brand-ivory p-4 rounded-xl text-center border border-gray-100">
                 <div className="text-2xl font-bold text-brand-emerald">
-                  {p.rating || "-"}
+                  {p.rating || "Not rated"}
                 </div>
                 <div className="text-sm text-gray-600">Rating</div>
               </div>

@@ -1,4 +1,4 @@
-// src/routes/dashboard/vendordashboard.routes.js
+// src/routes/dashboards/vendordashboard.routes.js
 const express = require("express");
 const router = express.Router();
 
@@ -11,7 +11,7 @@ const {
   addRating,
   getVendorConversations, // ✅ added
   sendVendorMessage, 
-} = require("../../controllers/dashboard/vendordashboard.controller");
+} = require("../../controllers/dashboards/vendordashboard.controller");
 
 // ✅ middleware (if you use one)
 const authMiddleware = require("../../middleware/authMiddleware");

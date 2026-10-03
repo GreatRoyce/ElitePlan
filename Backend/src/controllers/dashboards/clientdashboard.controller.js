@@ -3,7 +3,7 @@ const {
   addBookmark,
   removeBookmark,
   addNotification,
-} = require("../../helpers/client/clientHelpers");
+} = require("../../services/client/client.service");
 
 // ✅ Fetch full dashboard data
 const getClientDashboard = async (req, res) => {

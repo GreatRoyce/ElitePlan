@@ -63,18 +63,21 @@ export default function ClientLounge() {
         }
         return galleryItem;
       }) || [];
+    const rating = Number(item.rating);
 
     log(
       ` ${type} Gallery for ${item.businessName || item.companyName}:`,
-      galleryImages
+      galleryImages,
     );
 
     const base = {
       id: item._id,
       email: item.email,
       profileImage: imageUrl,
-      location: `${item.city || item.state}, ${item.country || "Nigeria"}`,
-      rating: item.rating || (Math.random() * 2 + 3).toFixed(1),
+      location: [item.city || item.state, item.country || "Nigeria"]
+        .filter(Boolean)
+        .join(", "),
+      rating: Number.isFinite(rating) && rating > 0 ? rating.toFixed(1) : null,
       verified: item.verified,
       gallery: galleryImages,
       type,
@@ -121,10 +124,10 @@ export default function ClientLounge() {
         log(" PLANNERS API RESPONSE:", planners.data?.data);
 
         const vendorData = vendors.data?.data?.map((v) =>
-          mapProfile(v, "Vendor")
+          mapProfile(v, "Vendor"),
         );
         const plannerData = planners.data?.data?.map((p) =>
-          mapProfile(p, "Planner")
+          mapProfile(p, "Planner"),
         );
 
         const allProfiles = [...(vendorData || []), ...(plannerData || [])];
@@ -153,7 +156,7 @@ export default function ClientLounge() {
 
         if (data.success && data.data) {
           const bookmarkedIds = new Set(
-            data.data.map((b) => b.targetId?._id).filter(Boolean)
+            data.data.map((b) => b.targetId?._id).filter(Boolean),
           );
           log(" Bookmarked profile IDs:", bookmarkedIds);
           setBookmarkedProfiles(bookmarkedIds);
@@ -171,10 +174,13 @@ export default function ClientLounge() {
     const fetchBookings = async () => {
       setBookingsLoading(true);
       try {
-        const res = await api.get("/bookings");
-        if (res.data.success) setBookings(res.data.data);
+        const res = await api.get("/client-dashboard");
+        if (res.data.success) {
+          setBookings(res.data.dashboard?.bookings || []);
+        }
       } catch (err) {
         console.error(" Error fetching bookings:", err);
+        setBookings([]);
       } finally {
         setBookingsLoading(false);
       }
@@ -185,7 +191,7 @@ export default function ClientLounge() {
   //  Memoized bookmarks
   const bookmarkedProfilesList = useMemo(
     () => profiles.filter((p) => bookmarkedProfiles.has(p.id)),
-    [profiles, bookmarkedProfiles]
+    [profiles, bookmarkedProfiles],
   );
 
   //  Filtered profiles
@@ -243,10 +249,7 @@ export default function ClientLounge() {
       if (isBookmarked) await api.delete(`/bookmarks/${id}`);
       else await api.post("/bookmarks", { targetId: id, targetModel });
 
-      log(
-        ` Bookmark ${isBookmarked ? "removed" : "added"} for ID:`,
-        id
-      );
+      log(` Bookmark ${isBookmarked ? "removed" : "added"} for ID:`, id);
     } catch (err) {
       console.error(" Error toggling bookmark:", err);
       // Rollback
@@ -280,7 +283,9 @@ export default function ClientLounge() {
       if (response.data.success) {
         log(" Event created successfully:", response.data);
         // Show success message
-        toast.success("Event form submitted successfully. We'll contact you soon.");
+        toast.success(
+          "Event form submitted successfully. We'll contact you soon.",
+        );
 
         // Optionally switch to bookings section
         setActiveSection("bookings");
@@ -288,7 +293,10 @@ export default function ClientLounge() {
     } catch (error) {
       console.error("Error submitting event form:", error);
       toast.error(
-        getApiErrorMessage(error, "Error submitting event form. Please try again.")
+        getApiErrorMessage(
+          error,
+          "Error submitting event form. Please try again.",
+        ),
       );
     }
   };
@@ -348,7 +356,7 @@ export default function ClientLounge() {
       saved: bookmarkedProfiles.size,
       messages: unreadMessagesCount,
     }),
-    [profiles.length, bookmarkedProfiles.size, unreadMessagesCount]
+    [profiles.length, bookmarkedProfiles.size, unreadMessagesCount],
   );
 
   //  Dynamic content - ADDED EVENT FORM CASE
@@ -536,8 +544,8 @@ function BookingsSection({ bookings, bookingsLoading }) {
                       b.status === "confirmed"
                         ? "bg-green-100 text-green-700"
                         : b.status === "pending"
-                        ? "bg-yellow-100 text-yellow-700"
-                        : "bg-gray-200 text-gray-700"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : "bg-gray-200 text-gray-700"
                     }`}
                   >
                     {b.status}

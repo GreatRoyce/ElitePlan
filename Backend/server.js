@@ -3,8 +3,10 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const morgan = require("morgan");
 const path = require("path");
+const jwt = require("jsonwebtoken");
 require("./src/models/event.model");
-const connectDB = require("./database/dbConnection");
+const connectDB = require("./src/config/db");
+const User = require("./src/models/user.model");
 
 // =======================
 // 🌍 Environment Setup
@@ -17,13 +19,17 @@ app.set("etag", false); // Disable ETag generation
 // ⚙️ Database Connection
 // =======================
 connectDB();
-console.log("🔍 Attempting to connect to MongoDB with URI:", process.env.MONGO_URI);
+console.log(
+  "🔍 Attempting to connect to MongoDB with URI:",
+  process.env.MONGO_URI,
+);
 
 // =======================
 // 🔧 Middleware
 // =======================
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:5174",
   "https://eliteplan.netlify.app",
   "https://www.eliteplan.netlify.app",
 ];
@@ -42,7 +48,7 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-  })
+  }),
 );
 
 if (process.env.NODE_ENV !== "production") {
@@ -65,7 +71,7 @@ app.use(
       res.setHeader("Access-Control-Allow-Origin", CLIENT_URL);
       res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     },
-  })
+  }),
 );
 
 // =======================
@@ -82,28 +88,29 @@ app.get("/", (req, res) => {
 // 🧩 Import Routes
 // =======================
 const clientRouter = require("./src/routes/client.routes");
-const plannerRouter = require("./src/routes/dashboard/plannerdashboard.routes");
+const plannerRouter = require("./src/routes/dashboards/plannerdashboard.routes");
 const vendorRouter = require("./src/routes/vendor.routes");
-const vendorDashboardRoutes = require("./src/routes/dashboard/vendordashboard.routes");
-const clientDashboardRoutes = require("./src/routes/dashboard/clientdashboard.routes");
+const vendorDashboardRoutes = require("./src/routes/dashboards/vendordashboard.routes");
+const clientDashboardRoutes = require("./src/routes/dashboards/clientdashboard.routes");
 const notificationRouter = require("./src/routes/notification.routes");
 
 // Uploads
-const uploadPlannerRoutes = require("./src/routes/usersRoutesController/uploadPlanner.routes");
-const uploadVendorRoutes = require("./src/routes/usersRoutesController/uploadVendor.routes");
+const uploadPlannerRoutes = require("./src/routes/uploads/planner.routes");
+const uploadVendorRoutes = require("./src/routes/uploads/vendor.routes");
 
 // Auth
 const authRoutes = require("./src/routes/auth.routes");
 
 // Profiles
-const clientProfileRoutes = require("./src/routes/usersRoutesController/clientProfile.routes");
-const plannerProfileRoutes = require("./src/routes/usersRoutesController/plannerProfile.routes");
-const vendorProfileRoutes = require("./src/routes/usersRoutesController/vendorProfile.routes");
+const clientProfileRoutes = require("./src/routes/profiles/client.routes");
+const plannerProfileRoutes = require("./src/routes/profiles/planner.routes");
+const vendorProfileRoutes = require("./src/routes/profiles/vendor.routes");
 
 // Consultation + Bookmarks + Message
 const messageRoutes = require("./src/routes/message.routes");
 const initialConsultationRoutes = require("./src/routes/initialConsultation.routes");
 const bookmarkRoutes = require("./src/routes/bookmark.routes");
+const eventRoutes = require("./src/routes/events.routes");
 
 // =======================
 // 🚦 Mount Routes
@@ -131,6 +138,7 @@ app.use("/api/v1/vendor-profile", vendorProfileRoutes);
 app.use("/api/v1/consultation", initialConsultationRoutes);
 app.use("/api/v1/bookmarks", bookmarkRoutes);
 app.use("/api/v1/messages", messageRoutes);
+app.use("/api/v1/events", eventRoutes);
 
 // =======================
 // ⚠️ Global Error Handler
@@ -167,37 +175,40 @@ const io = new Server(server, {
   },
 });
 
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.auth?.token;
+    if (!token) return next(new Error("Authentication required"));
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select("_id role");
+    if (!user) return next(new Error("Unauthorized"));
+
+    socket.data.user = {
+      id: user._id.toString(),
+      role: user.role,
+    };
+    next();
+  } catch {
+    next(new Error("Unauthorized"));
+  }
+});
+
 // Connected users storage
 const connectedUsers = {};
+app.set("io", io);
+app.set("connectedUsers", connectedUsers);
 
 io.on("connection", (socket) => {
-  console.log("🔌 New socket connected:", socket.id);
-
-  // Join with userId and role
-  socket.on("join", ({ userId, role }) => {
-    connectedUsers[userId] = { socketId: socket.id, role };
-    console.log(`${role} connected: ${userId}`);
-  });
-
-  // Send message to a specific user
-  socket.on("send_message", ({ toUserId, message, fromUserId }) => {
-    const recipient = connectedUsers[toUserId];
-    if (recipient) {
-      io.to(recipient.socketId).emit("receive_message", {
-        message,
-        fromUserId,
-      });
-    }
-  });
+  const { id: userId, role } = socket.data.user;
+  connectedUsers[userId] = { socketId: socket.id, role };
+  console.log(`${role} connected: ${userId}`);
 
   // Disconnect
   socket.on("disconnect", () => {
-    for (const userId in connectedUsers) {
-      if (connectedUsers[userId].socketId === socket.id) {
-        console.log(`🔌 User disconnected: ${userId}`);
-        delete connectedUsers[userId];
-        break;
-      }
+    if (connectedUsers[userId]?.socketId === socket.id) {
+      console.log(`🔌 User disconnected: ${userId}`);
+      delete connectedUsers[userId];
     }
   });
 });

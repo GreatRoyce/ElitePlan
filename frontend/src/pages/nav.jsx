@@ -188,15 +188,11 @@ function Nav({ user, handleLogout }) {
       {showSignup && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex justify-center items-center p-4">
           <div className="relative bg-white/10 border border-white/20 rounded-2xl p-6 w-full max-w-2xl backdrop-blur-xl shadow-2xl">
-            <button
-              onClick={() => setShowSignup(false)}
-              className="absolute top-3 right-3 text-white hover:text-brand-gold transition"
-            >
-              <X className="w-6 h-6" />
-            </button>
-
             {/* Your SignUpForm appears here */}
-            <SignUpForm onSuccess={() => setShowSignup(false)} />
+            <SignUpForm
+              onClose={() => setShowSignup(false)}
+              onSuccess={() => setShowSignup(false)}
+            />
           </div>
         </div>
       )}

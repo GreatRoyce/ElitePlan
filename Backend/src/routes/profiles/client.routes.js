@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const upload = require("../../../multer/multer");
+const upload = require("../../config/multer");
 const authMiddleware = require("../../middleware/authMiddleware");
 const {
   createClientProfile,
@@ -8,7 +8,7 @@ const {
   getClientProfile, // ✅ newly added import
   updateClientProfile,
   deleteClientProfile,
-} = require("../../controllers/usersProfileController/clientProfile.controller");
+} = require("../../controllers/profiles/clientProfile.controller");
 
 // =======================
 // 🧍 Client Profile Routes

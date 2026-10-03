@@ -1,13 +1,11 @@
 // src/controllers/plannerMessages.controller.js
 const Message = require("../models/message.model");
 const User = require("../models/user.model");
-const VendorProfile = require("../models/vendorProfile.model");
-const PlannerProfile = require("../models/plannerProfile.model");
 
 const createMessage = async (req, res) => {
   try {
     const senderId = req.user._id;
-    const { recipientId, text, recipientModel, senderModel } = req.body;
+    const { recipientId, text } = req.body;
 
     if (!recipientId || !text) {
       return res
@@ -15,38 +13,32 @@ const createMessage = async (req, res) => {
         .json({ message: "Recipient and text are required" });
     }
 
-    // Determine recipient model dynamically if not provided
-    let resolvedRecipientModel = recipientModel;
-    if (!resolvedRecipientModel) {
-      const recipientUser = await User.findById(recipientId);
-      const recipientVendor = await VendorProfile.findOne({
-        user: recipientId,
-      });
-      const recipientPlanner = await PlannerProfile.findOne({
-        user: recipientId,
-      });
-
-      if (recipientUser) resolvedRecipientModel = "ClientProfile";
-      else if (recipientVendor) resolvedRecipientModel = "VendorProfile";
-      else if (recipientPlanner) resolvedRecipientModel = "PlannerProfile";
-      else resolvedRecipientModel = "User"; // fallback
+    const recipient = await User.findById(recipientId).select("_id");
+    if (!recipient) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Recipient not found" });
     }
-
-    // Determine sender model dynamically if missing
-    const resolvedSenderModel =
-      senderModel || req.profileType || "PlannerProfile";
 
     const message = await Message.create({
       sender: senderId,
-      senderModel: resolvedSenderModel,
-      recipient: recipientId,
-      recipientModel: resolvedRecipientModel,
+      senderModel: "User",
+      recipient: recipient._id,
+      recipientModel: "User",
       text,
     });
 
-    // Populate the sender details for the real-time event
     const populatedMessage = await Message.findById(message._id)
-      .populate("sender", "username firstName name imageCover role")
+      .populate({
+        path: "sender",
+        model: User,
+        select: "username firstName name imageCover role",
+      })
+      .populate({
+        path: "recipient",
+        model: User,
+        select: "username firstName name imageCover role",
+      })
       .lean();
 
     // Emit via Socket.IO if recipient is online
@@ -74,8 +66,16 @@ const getConversations = async (req, res) => {
       $or: [{ sender: userId }, { recipient: userId }],
     })
       .sort({ createdAt: -1 })
-      .populate("sender", "username firstName name imageCover role")
-      .populate("recipient", "username firstName name imageCover role")
+      .populate({
+        path: "sender",
+        model: User,
+        select: "username firstName name imageCover role",
+      })
+      .populate({
+        path: "recipient",
+        model: User,
+        select: "username firstName name imageCover role",
+      })
       .lean();
 
     // Group messages by conversation partner
@@ -99,7 +99,7 @@ const getConversations = async (req, res) => {
             (m) =>
               m.recipient?._id?.equals(userId) &&
               !m.read &&
-              m.sender?._id?.equals(otherId)
+              m.sender?._id?.equals(otherId),
           ).length,
         };
       }
@@ -129,15 +129,27 @@ const getMessageHistory = async (req, res) => {
       ],
     })
       .sort({ createdAt: "asc" })
-      .populate("sender", "username firstName name imageCover role")
+      .populate({
+        path: "sender",
+        model: User,
+        select: "username firstName name imageCover role",
+      })
+      .populate({
+        path: "recipient",
+        model: User,
+        select: "username firstName name imageCover role",
+      })
       .lean();
 
     res.status(200).json({
       success: true,
-      data: messages.map((m) => ({
-        ...m,
-        senderId: m.sender._id,
-      })),
+      data: messages
+        .filter((message) => message.sender && message.recipient)
+        .map((message) => ({
+          ...message,
+          senderId: message.sender._id,
+          recipientId: message.recipient._id,
+        })),
     });
   } catch (err) {
     console.error("❌ Error fetching message history (Planner):", err);

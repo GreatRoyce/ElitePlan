@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const upload = require("../../../multer/multer");
+const upload = require("../../config/multer");
 const authMiddleware = require("../../middleware/authMiddleware");
 
 const {
@@ -11,7 +11,7 @@ const {
   getPlannerProfileById,
   deletePlannerProfile,
   getPlannersBySpecialization,
-} = require("../../controllers/usersProfileController/plannerProfile.controller");
+} = require("../../controllers/profiles/plannerProfile.controller");
 
 // ===================================================
 // 🎯 PLANNER PROFILE ROUTES

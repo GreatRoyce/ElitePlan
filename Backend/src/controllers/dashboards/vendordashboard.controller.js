@@ -1,11 +1,14 @@
-const VendorDashboard = require("../../models/dashboard/vendordashboard.model");
+const VendorDashboard = require("../../models/dashboards/vendordashboard.model");
 const Notification = require("../../models/notification.model");
 const VendorProfile = require("../../models/vendorProfile.model");
 const InitialConsultation = require("../../models/initialConsultation.model");
 const { getUserProfile } = require("../notification.controller");
-const { updateVendorDashboard } = require("../../helpers/vendor/vendorHelpers");
+const {
+  updateVendorDashboard,
+} = require("../../services/vendor/vendor.service");
 const Message = require("../../models/message.model");
 const Event = require("../../models/event.model");
+const User = require("../../models/user.model");
 
 // -------------------- GET CONVERSATIONS --------------------
 
@@ -19,8 +22,16 @@ const getVendorConversations = async (req, res) => {
       $or: [{ sender: vendorId }, { recipient: vendorId }],
     })
       .sort({ createdAt: -1 })
-      .populate("sender", "username firstName imageCover")
-      .populate("recipient", "username firstName imageCover")
+      .populate({
+        path: "sender",
+        model: User,
+        select: "username firstName imageCover role",
+      })
+      .populate({
+        path: "recipient",
+        model: User,
+        select: "username firstName imageCover role",
+      })
       .lean();
 
     // Group messages by conversation partner
@@ -28,9 +39,10 @@ const getVendorConversations = async (req, res) => {
 
     messages.forEach((msg) => {
       // Determine the "other" participant
-      const other = msg.sender._id.equals(vendorId)
+      const other = msg.sender?._id?.equals(vendorId)
         ? msg.recipient
         : msg.sender;
+      if (!other?._id) return;
       const otherId = other._id.toString();
 
       // Initialize conversation if not exists
@@ -69,18 +81,31 @@ const sendVendorMessage = async (req, res) => {
       return res.status(400).json({ message: "recipientId and text required" });
     }
 
+    const recipient = await User.findById(recipientId).select("_id");
+    if (!recipient) {
+      return res.status(404).json({ message: "Recipient not found" });
+    }
+
     const message = await Message.create({
       sender: vendorId,
-      senderModel: "VendorProfile",
-      recipient: recipientId,
-      recipientModel: "ClientProfile",
+      senderModel: "User",
+      recipient: recipient._id,
+      recipientModel: "User",
       text,
     });
 
-    const populated = await message
-      .populate("sender", "username name imageCover")
-      .populate("recipient", "username name imageCover")
-      .execPopulate();
+    const populated = await Message.findById(message._id)
+      .populate({
+        path: "sender",
+        model: User,
+        select: "username name imageCover role",
+      })
+      .populate({
+        path: "recipient",
+        model: User,
+        select: "username name imageCover role",
+      })
+      .lean();
 
     // Optionally: emit via Socket.IO if you have real-time chat
     const io = req.app.get("io");
@@ -107,12 +132,10 @@ const getVendorDashboard = async (req, res) => {
       user: vendorId,
     }).lean();
     if (!vendorProfile) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "Vendor profile not found. Please create one.",
-        });
+      return res.status(404).json({
+        success: false,
+        message: "Vendor profile not found. Please create one.",
+      });
     }
 
     // 2. Fetch pending requests
@@ -139,7 +162,7 @@ const getVendorDashboard = async (req, res) => {
       vendorStats: {
         totalBookings: assignedEvents.length,
         completedBookings: assignedEvents.filter(
-          (e) => e.status === "completed"
+          (e) => e.status === "completed",
         ).length,
         // other stats...
       },
@@ -295,7 +318,7 @@ const addRating = async (req, res) => {
 
     // Check if the same client has rated before
     const existingRating = dashboard.ratings.find(
-      (r) => r.client.toString() === clientId
+      (r) => r.client.toString() === clientId,
     );
 
     if (existingRating) {

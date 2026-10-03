@@ -1,12 +1,12 @@
 // src/routes/usersProfileRoutes/uploadPlanner.routes.js
 const express = require("express");
 const router = express.Router();
-const upload = require("../../../multer/multer");
+const upload = require("../../config/multer");
 const authMiddleware = require("../../middleware/authMiddleware");
 const {
   uploadPlannerProfileImage,
   uploadPlannerGallery,
-} = require("../../controllers/usersProfileController/uploadPlanner.controller");
+} = require("../../controllers/profiles/uploadPlanner.controller");
 
 // ✅ Upload planner profile image
 router.post(

@@ -5,7 +5,7 @@ const {
   addClientBookmark,
   removeClientBookmark,
   addClientNotification,
-} = require("../../controllers/dashboard/clientdashboard.controller");
+} = require("../../controllers/dashboards/clientdashboard.controller");
 
 const authMiddleware = require("../../middleware/authMiddleware");
 

@@ -1,9 +1,8 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { Check, X, User, Calendar, Loader2, MapPin, Users } from "lucide-react";
 import api from "../../../utils/axios";
 import squeeze from "../../../../src/assets/edge.png";
 import { useAuth } from "../../../context/authStore";
-import { getRealtimeClient, releaseRealtimeClient } from "../../../utils/realtime";
 
 export default function PendingRequests() {
   const { user } = useAuth();
@@ -11,23 +10,8 @@ export default function PendingRequests() {
   const [loadingRequests, setLoadingRequests] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [actionType, setActionType] = useState(null);
-  const socketRef = useRef(null);
-
   // ===============================
-  // 1️⃣ Socket.IO connection
-  // ===============================
-  useEffect(() => {
-    if (!user?._id) return () => {};
-    socketRef.current = getRealtimeClient({ userId: user._id, role: "planner" });
-
-    return () => {
-      releaseRealtimeClient({ userId: user._id, role: "planner" });
-      socketRef.current = null;
-    };
-  }, [user?._id]);
-
-  // ===============================
-  // 2️⃣ Fetch pending requests
+  // Fetch pending requests
   // ===============================
   useEffect(() => {
     const fetchPending = async () => {
@@ -46,7 +30,7 @@ export default function PendingRequests() {
   }, []);
 
   // ===============================
-  // 3️⃣ Handle approve/decline
+  // Handle approve/decline
   // ===============================
   const handleDecision = async (id, status) => {
     try {
@@ -71,13 +55,6 @@ export default function PendingRequests() {
           recipientId: clientId,
           recipientModel: "User",
           text: messageText,
-        });
-
-        // Emit real-time message
-        socketRef.current?.emit("send_message", {
-          fromUserId: plannerId,
-          toUserId: clientId,
-          message: messageText,
         });
       }
     } catch (err) {
@@ -143,7 +120,7 @@ export default function PendingRequests() {
                 onClick={() =>
                   handleDecision(
                     selectedRequest._id,
-                    actionType === "approve" ? "approved" : "declined"
+                    actionType === "approve" ? "approved" : "declined",
                   )
                 }
                 className={`flex items-center gap-1 px-4 py-2 rounded-lg text-white ${

@@ -11,7 +11,7 @@ const {
   addRating,
   getPlannerConversations, // Fetch conversations
   sendPlannerMessage,      // Send messages
-} = require("../../controllers/dashboard/plannerdashboard.controller");
+} = require("../../controllers/dashboards/plannerdashboard.controller");
 
 const authMiddleware = require("../../middleware/authMiddleware");
 
