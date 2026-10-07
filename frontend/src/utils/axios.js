@@ -35,12 +35,13 @@ api.interceptors.response.use(
     const message = getApiErrorMessage(error);
     error.normalized = { status, message };
 
-    if (status === 401) {
+    const restricted = ["ACCOUNT_ARCHIVED", "ACCOUNT_SUSPENDED", "ACCOUNT_BANNED", "SESSION_REVOKED"].includes(error?.response?.data?.code);
+    if (status === 401 || restricted) {
       localStorage.removeItem("user");
       localStorage.removeItem("token");
       delete api.defaults.headers.common["Authorization"];
       if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("auth:logout"));
+        window.dispatchEvent(new CustomEvent("auth:logout", { detail: { message: restricted ? message : undefined } }));
       }
     }
 

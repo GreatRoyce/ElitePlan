@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { LogOut as LogOutIcon, Menu as MenuIcon, X as CloseIcon } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import elite from "../../../../src/assets/elite.png";
 
 export default function Sidebar({ activeSection, setActiveSection, navItems }) {
@@ -47,6 +47,7 @@ export default function Sidebar({ activeSection, setActiveSection, navItems }) {
               )}
             </button>
           ))}
+          <Link to="/reports" className="block rounded-lg p-3 font-medium text-gray-600 hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-brand-gold">My reports</Link>
         </nav>
 
         <div className="p-4 border-t border-gray-200">
@@ -104,6 +105,7 @@ export default function Sidebar({ activeSection, setActiveSection, navItems }) {
                   )}
                 </button>
               ))}
+              <Link to="/reports" className="block rounded-lg p-3 font-medium text-gray-600 hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-brand-gold">My reports</Link>
             </nav>
 
             <div className="p-4 border-t border-gray-200">

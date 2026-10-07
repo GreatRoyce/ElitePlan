@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const Bookmark = require("../models/bookmark.model");
 const VendorProfile = require("../models/vendorProfile.model"); // adjust path/name if different
 const PlannerProfile = require("../models/plannerProfile.model"); // adjust path/name if different
+const User = require("../models/user.model");
+const { publicOwnerMatch, memberRoles } = require("../services/staffAccess.service");
 
 // Create a bookmark
 const createBookmark = async (req, res) => {
@@ -43,7 +45,8 @@ const createBookmark = async (req, res) => {
     if (!Model) return res.status(400).json({ success: false, message: "Invalid targetModel" });
 
     const targetDoc = await Model.findById(targetId).lean();
-    if (!targetDoc) {
+    const owner = targetDoc ? await User.findById(targetDoc.userId).select("_id archivedAt role") : null;
+    if (!owner || owner.archivedAt || !memberRoles.includes(owner.role) || targetDoc.active === false) {
       return res.status(404).json({ success: false, message: "Target profile not found" });
     }
 
@@ -76,6 +79,7 @@ const createBookmark = async (req, res) => {
 
 // Get current user's bookmarks
 const getMyBookmarks = async (req, res) => {
+  res.set("Cache-Control", "no-store");
   try {
     const clientId = req.user?._id || req.user?.id;
     if (!clientId) {
@@ -85,12 +89,15 @@ const getMyBookmarks = async (req, res) => {
       });
     }
 
-    const bookmarks = await Bookmark.find({ client: clientId })
+    const records = await Bookmark.find({ client: clientId })
       .populate({
         path: "targetId",
-        select: "username name businessName category image location city state country",
+        select: "username name businessName category image location city state country userId active",
+        match: { active: { $ne: false } },
+        populate: { path: "userId", select: "_id", match: publicOwnerMatch },
       })
       .sort({ createdAt: -1 });
+    const bookmarks = records.filter((record) => record.targetId?.userId && record.targetId.active !== false);
 
     res.status(200).json({
       success: true,

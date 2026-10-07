@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../utils/axios";
+import { staffHome } from "../utils/staffAccess";
 import portraitsFlip from "../data/weddingPortraits";
 import "../../src/index.css";
 
@@ -44,7 +45,7 @@ function Login({ onLogin }) {
       api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
       if (onLogin) onLogin(user, token);
-      navigate("/lounge");
+      navigate(staffHome(user));
     } catch (err) {
       console.error("❌ Login failed:", err);
       setMessage(`❌ ${err.response?.data?.message || "Login failed."}`);

@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
+const verificationFields = require("./profileVerification.fields");
 
 const plannerProfileSchema = new Schema(
   {
@@ -126,7 +127,9 @@ const plannerProfileSchema = new Schema(
       },
     ],
     verified: { type: Boolean, default: false },
+    ...verificationFields,
     active: { type: Boolean, default: true },
+    ...require("./contentModeration.fields"),
 
     // ========== Administrative ==========
     lastUpdated: { type: Date, default: Date.now },

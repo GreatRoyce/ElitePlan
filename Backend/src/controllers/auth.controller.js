@@ -5,6 +5,8 @@ const User = require("../models/user.model");
 const ClientProfile = require("../models/clientProfile.model");
 const VendorProfile = require("../models/vendorProfile.model");
 const PlannerProfile = require("../models/plannerProfile.model");
+const { accountRestriction, currentWarning } = require("../services/accountAccess.service");
+const { grantedPermissions } = require("../services/staffAccess.service");
 
 // ==============================
 // 🧍 REGISTER USER (All Roles)
@@ -50,7 +52,7 @@ const registerUser = async (req, res) => {
     }
     // 5️⃣ Generate JWT
     const token = jwt.sign(
-      { id: newUser._id, role: newUser.role, email: newUser.email },
+      { id: newUser._id, role: newUser.role, email: newUser.email, authVersion: newUser.authVersion ?? 0 },
       process.env.JWT_SECRET,
       { expiresIn: "10m" }
     );
@@ -96,8 +98,11 @@ const loginUser = async (req, res) => {
         .json({ success: false, message: "Invalid email or password" });
 
     // 3️⃣ Create token
+    const restriction = accountRestriction(user);
+    if (restriction) return res.status(403).json({ success: false, ...restriction });
+
     const token = jwt.sign(
-      { id: user._id, role: user.role, email: user.email },
+      { id: user._id, role: user.role, email: user.email, authVersion: user.authVersion ?? 0 },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -113,6 +118,8 @@ const loginUser = async (req, res) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        warning: currentWarning(user),
+        permissions: grantedPermissions(user),
       },
     });
   } catch (error) {
@@ -138,6 +145,8 @@ const getMe = async (req, res) => {
         email: req.user.email,
         phone: req.user.phone,
         role: req.user.role,
+        warning: currentWarning(req.user),
+        permissions: grantedPermissions(req.user),
       },
     });
   } catch (error) {

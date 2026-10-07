@@ -1,5 +1,7 @@
 const VendorProfile = require("../../models/vendorProfile.model");
 const User = require("../../models/user.model");
+const { publicOwnerMatch } = require("../../services/staffAccess.service");
+const verification = require("../../services/profileVerification.service");
 
 // Helpers
 const toArray = (val) => (Array.isArray(val) ? val : val ? [val] : []);
@@ -16,7 +18,7 @@ const createOrGetVendorProfile = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    let profile = await VendorProfile.findOne({ userId });
+    let profile = await VendorProfile.findOne({ userId }).select(verification.ownerProjection);
 
     if (!profile) {
       profile = new VendorProfile({
@@ -36,7 +38,7 @@ const createOrGetVendorProfile = async (req, res) => {
       await profile.save();
     }
 
-    res.status(200).json({ success: true, data: profile });
+    res.status(200).json({ success: true, data: verification.publicProfile(profile, true) });
   } catch (error) {
     console.error("Error creating/getting vendor profile:", error);
     res.status(500).json({ success: false, message: error.message });
@@ -51,10 +53,11 @@ const updateVendorProfile = async (req, res) => {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    let profile = await VendorProfile.findOne({ userId });
+    let profile = await VendorProfile.findOne({ userId }).select(verification.ownerProjection);
     if (!profile) return res.status(404).json({ success: false, message: "Profile not found" });
 
-    const updates = { ...req.body };
+    const updates = verification.ownerUpdates(req.body, "vendor");
+    if (!updates || !Object.keys(updates).length && !Object.values(req.files || {}).some((files) => files.length)) return res.status(400).json({ success: false, message: "Provide editable profile fields." });
 
     if (updates.subcategory) updates.subcategory = toArray(updates.subcategory);
 
@@ -92,9 +95,10 @@ const updateVendorProfile = async (req, res) => {
 
     updates.lastUpdated = Date.now();
 
-    const updatedProfile = await VendorProfile.findByIdAndUpdate(profile._id, updates, { new: true, runValidators: true });
+    const updatedProfile = await VendorProfile.findOneAndUpdate({ _id: profile._id, userId, ...verification.versionFilter(profile) }, verification.ownerWrite(profile, updates, "vendor", userId), { new: true, runValidators: true }).select(verification.ownerProjection);
+    if (!updatedProfile) return res.status(409).json({ success: false, message: "Your profile changed during this update. Reload it before saving again." });
 
-    res.status(200).json({ success: true, message: "Profile updated", data: updatedProfile });
+    res.status(200).json({ success: true, message: "Profile updated", data: verification.publicProfile(updatedProfile, true) });
   } catch (error) {
     console.error("Update error:", error);
     res.status(500).json({ success: false, message: error.message });
@@ -109,10 +113,10 @@ const getCurrentVendorProfile = async (req, res) => {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    let profile = await VendorProfile.findOne({ userId });
+    let profile = await VendorProfile.findOne({ userId }).select(verification.ownerProjection);
     if (!profile) return createOrGetVendorProfile(req, res);
 
-    res.status(200).json({ success: true, data: profile });
+    res.status(200).json({ success: true, data: verification.publicProfile(profile, true) });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -126,10 +130,12 @@ const deleteVendorProfile = async (req, res) => {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    const profile = await VendorProfile.findOne({ userId });
+    const profile = await VendorProfile.findOne({ userId }).select(verification.ownerProjection);
     if (!profile) return res.status(404).json({ success: false, message: "Vendor profile not found" });
 
-    await VendorProfile.findByIdAndDelete(profile._id);
+    if (profile.active === false) return res.status(409).json({ success: false, message: "A hidden listing must be reviewed by staff before it can be deleted. You can still edit its content." });
+    const deleted = await VendorProfile.findOneAndDelete({ _id: profile._id, userId, active: { $ne: false }, ...verification.versionFilter(profile) });
+    if (!deleted) return res.status(409).json({ success: false, message: "The profile has changed. Refresh before deleting it." });
 
     res.status(200).json({ success: true, message: "Vendor profile deleted" });
   } catch (error) {
@@ -142,8 +148,9 @@ const deleteVendorProfile = async (req, res) => {
 // ===================================================
 const getVendorProfiles = async (req, res) => {
   try {
-    const vendors = await VendorProfile.find().populate("userId", "username email").select("-__v");
-    res.status(200).json({ success: true, count: vendors.length, data: vendors });
+    const records = await VendorProfile.find({ active: { $ne: false } }).populate({ path: "userId", select: "username email", match: publicOwnerMatch }).select("-__v");
+    const vendors = records.filter((profile) => profile.userId && profile.active !== false);
+    res.status(200).json({ success: true, count: vendors.length, data: vendors.map((profile) => verification.publicProfile(profile)) });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -151,9 +158,9 @@ const getVendorProfiles = async (req, res) => {
 
 const getVendorProfileById = async (req, res) => {
   try {
-    const vendor = await VendorProfile.findById(req.params.id).populate("userId", "username email");
-    if (!vendor) return res.status(404).json({ success: false, message: "Vendor not found" });
-    res.status(200).json({ success: true, data: vendor });
+    const vendor = await VendorProfile.findById(req.params.id).populate({ path: "userId", select: "username email", match: publicOwnerMatch });
+    if (!vendor?.userId || vendor.active === false) return res.status(404).json({ success: false, message: "Vendor not found" });
+    res.status(200).json({ success: true, data: verification.publicProfile(vendor) });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -162,9 +169,10 @@ const getVendorProfileById = async (req, res) => {
 const getVendorsByCategory = async (req, res) => {
   try {
     const { category } = req.params;
-    const vendors = await VendorProfile.find({ category }).populate("userId", "username email");
+    const records = await VendorProfile.find({ category, active: { $ne: false } }).populate({ path: "userId", select: "username email", match: publicOwnerMatch });
+    const vendors = records.filter((profile) => profile.userId && profile.active !== false);
     if (!vendors.length) return res.status(404).json({ success: false, message: "No vendors found" });
-    res.status(200).json({ success: true, data: vendors });
+    res.status(200).json({ success: true, data: vendors.map((profile) => verification.publicProfile(profile)) });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

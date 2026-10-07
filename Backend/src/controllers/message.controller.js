@@ -13,8 +13,8 @@ const createMessage = async (req, res) => {
         .json({ message: "Recipient and text are required" });
     }
 
-    const recipient = await User.findById(recipientId).select("_id");
-    if (!recipient) {
+    const recipient = await User.findById(recipientId).select("_id archivedAt");
+    if (!recipient || recipient.archivedAt) {
       return res
         .status(404)
         .json({ success: false, message: "Recipient not found" });

@@ -6,6 +6,7 @@ import React, {
   useLayoutEffect,
 } from "react";
 import { Send, Loader2, Check } from "lucide-react";
+import { Link } from "react-router-dom";
 import api from "../../utils/axios";
 import {
   getRealtimeClient,
@@ -214,6 +215,7 @@ export default function Chat({
                     timestamp={msg.timestamp}
                   />
                 </div>
+                {msg.received && /^[a-f0-9]{24}$/i.test(msg._id || "") && <Link to={`/reports/new?type=message&targetId=${msg._id}`} className="mt-2 inline-block rounded text-xs text-gray-500 hover:underline focus-visible:ring-2 focus-visible:ring-brand-gold">Report message</Link>}
               </div>
             </div>
           ))}

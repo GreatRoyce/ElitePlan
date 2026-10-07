@@ -3,10 +3,9 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const morgan = require("morgan");
 const path = require("path");
-const jwt = require("jsonwebtoken");
 require("./src/models/event.model");
 const connectDB = require("./src/config/db");
-const User = require("./src/models/user.model");
+const { configureRealtimeAccess } = require("./src/services/realtimeAccess.service");
 
 // =======================
 // 🌍 Environment Setup
@@ -55,6 +54,8 @@ if (process.env.NODE_ENV !== "production") {
   app.use(morgan("dev"));
 }
 
+// Mount telemetry before the general parser so it has its own small body limit.
+app.use("/api/v1/analytics", require("./src/microservices/analytics/analytics.routes"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -100,6 +101,7 @@ const uploadVendorRoutes = require("./src/routes/uploads/vendor.routes");
 
 // Auth
 const authRoutes = require("./src/routes/auth.routes");
+const adminRoutes = require("./src/routes/admin.routes");
 
 // Profiles
 const clientProfileRoutes = require("./src/routes/profiles/client.routes");
@@ -128,6 +130,7 @@ app.use("/api/v1/upload-vendor", uploadVendorRoutes);
 
 // Auth
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/admin", adminRoutes);
 
 // Profiles
 app.use("/api/v1/client-profile", clientProfileRoutes);
@@ -138,6 +141,7 @@ app.use("/api/v1/vendor-profile", vendorProfileRoutes);
 app.use("/api/v1/consultation", initialConsultationRoutes);
 app.use("/api/v1/bookmarks", bookmarkRoutes);
 app.use("/api/v1/messages", messageRoutes);
+app.use("/api/v1/reports", require("./src/routes/reports.routes"));
 app.use("/api/v1/events", eventRoutes);
 
 // =======================
@@ -175,43 +179,12 @@ const io = new Server(server, {
   },
 });
 
-io.use(async (socket, next) => {
-  try {
-    const token = socket.handshake.auth?.token;
-    if (!token) return next(new Error("Authentication required"));
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select("_id role");
-    if (!user) return next(new Error("Unauthorized"));
-
-    socket.data.user = {
-      id: user._id.toString(),
-      role: user.role,
-    };
-    next();
-  } catch {
-    next(new Error("Unauthorized"));
-  }
-});
-
 // Connected users storage
 const connectedUsers = {};
 app.set("io", io);
 app.set("connectedUsers", connectedUsers);
 
-io.on("connection", (socket) => {
-  const { id: userId, role } = socket.data.user;
-  connectedUsers[userId] = { socketId: socket.id, role };
-  console.log(`${role} connected: ${userId}`);
-
-  // Disconnect
-  socket.on("disconnect", () => {
-    if (connectedUsers[userId]?.socketId === socket.id) {
-      console.log(`🔌 User disconnected: ${userId}`);
-      delete connectedUsers[userId];
-    }
-  });
-});
+configureRealtimeAccess(io, connectedUsers);
 
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);

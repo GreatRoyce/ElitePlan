@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import { FaLocationDot } from "react-icons/fa6";
 import api from "../../../utils/axios";
+import VerificationStatus from "../../Verification/VerificationStatus";
+import ContentNotice from "../../Moderation/ContentNotice";
 
 // ✅ Helper to construct full image URL
 const getImageUrl = (path) => {
@@ -359,6 +361,8 @@ export default function Profile() {
       </div>
 
       {/* Tabs */}
+      <VerificationStatus profile={formData || draftData} />
+      <ContentNotice profile={formData || draftData} />
       <div className="flex gap-1 mb-6 border-b border-navy/20">
         {tabs.map((tab) => (
           <button

@@ -1,5 +1,6 @@
 // src/controllers/profiles/uploadVendor.controller.js
 const VendorProfile = require("../../models/vendorProfile.model");
+const { publicProfile, ownerProjection } = require("../../services/profileVerification.service");
 
 // ✅ Normalize file path for cross-platform compatibility
 const normalizePath = (filePath) => filePath?.replace(/\\/g, "/");
@@ -25,9 +26,9 @@ const uploadVendorProfileImage = async (req, res) => {
     // Update vendor's profile image
     const vendor = await VendorProfile.findOneAndUpdate(
       { userId },
-      { profileImage: imagePath, lastUpdated: Date.now() },
+      { $set: { profileImage: imagePath, lastUpdated: Date.now() }, $inc: { verificationVersion: 1 } },
       { new: true }
-    );
+    ).select(ownerProjection);
 
     if (!vendor) {
       return res.status(404).json({ success: false, message: "Vendor profile not found" });
@@ -36,7 +37,7 @@ const uploadVendorProfileImage = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Profile image uploaded successfully",
-      data: { profileImage: imagePath, vendor },
+      data: { profileImage: imagePath, vendor: publicProfile(vendor, true) },
     });
   } catch (error) {
     console.error("Upload Vendor Profile Image Error:", error);
@@ -66,9 +67,9 @@ const uploadVendorGallery = async (req, res) => {
 
     const vendor = await VendorProfile.findOneAndUpdate(
       { userId },
-      { $push: { gallery: { $each: imagePaths } }, lastUpdated: Date.now() },
+      { $push: { gallery: { $each: imagePaths } }, $set: { lastUpdated: Date.now() }, $inc: { verificationVersion: 1 } },
       { new: true }
-    );
+    ).select(ownerProjection);
 
     if (!vendor) {
       return res.status(404).json({ success: false, message: "Vendor profile not found" });
@@ -77,7 +78,7 @@ const uploadVendorGallery = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Gallery images uploaded successfully",
-      data: { gallery: imagePaths, vendor },
+      data: { gallery: imagePaths, vendor: publicProfile(vendor, true) },
     });
   } catch (error) {
     console.error("Upload Vendor Gallery Error:", error);

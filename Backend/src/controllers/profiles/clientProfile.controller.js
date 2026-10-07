@@ -122,8 +122,8 @@ const updateClientProfile = async (req, res) => {
 
     const imageCover = req.file ? req.file.path.replace(/\\/g, "/") : undefined;
 
-    const updatedProfile = await ClientProfile.findByIdAndUpdate(
-      id,
+    const updatedProfile = await ClientProfile.findOneAndUpdate(
+      { _id: id, user: req.user._id },
       {
         fullName,
         email,
@@ -163,7 +163,7 @@ const updateClientProfile = async (req, res) => {
 const deleteClientProfile = async (req, res) => {
   try {
     const { id } = req.params;
-    const deletedProfile = await ClientProfile.findByIdAndDelete(id);
+    const deletedProfile = await ClientProfile.findOneAndDelete({ _id: id, user: req.user._id });
 
     if (!deletedProfile) {
       return res.status(404).json({

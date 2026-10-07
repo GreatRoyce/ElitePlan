@@ -6,6 +6,7 @@ const {
 } = require("../controllers/auth.controller");
 
 const authMiddleware = require("../middleware/authMiddleware");
+const { acknowledgeWarning } = require("../controllers/accountModeration.controller");
 
 const router = express.Router();
 
@@ -17,5 +18,6 @@ router.post("/login", loginUser);
 
 // 👤 Get Current Authenticated User
 router.get("/me", authMiddleware(), getMe);
+router.post("/warnings/:warningId/acknowledge", authMiddleware(), acknowledgeWarning);
 
 module.exports = router;

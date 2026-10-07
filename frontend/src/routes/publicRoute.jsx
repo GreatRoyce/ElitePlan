@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/authStore";
+import { staffHome } from "../utils/staffAccess";
 
 const PublicRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -10,7 +11,7 @@ const PublicRoute = ({ children }) => {
   // If user is logged in, redirect them away from public pages,
   // UNLESS they are on the logout page itself.
   if (user && location.pathname !== "/logout") {
-    return <Navigate to="/lounge" replace />; // redirect logged-in users
+    return <Navigate to={staffHome(user)} replace />;
   }
 
   return children;

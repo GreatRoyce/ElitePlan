@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
+const { sessionRejection } = require("../services/accountAccess.service");
 
 /**
  * 🔐 Auth Middleware (optional role restriction)
@@ -28,6 +29,9 @@ const authMiddleware = (roles = []) => {
           message: "User not found or no longer exists.",
         });
       }
+
+      const rejection = sessionRejection(user, decoded);
+      if (rejection) return res.status(rejection.code === "SESSION_REVOKED" ? 401 : 403).json({ success: false, ...rejection });
 
       // ✅ Role check (if roles are restricted)
       if (roles.length && !roles.includes(user.role)) {

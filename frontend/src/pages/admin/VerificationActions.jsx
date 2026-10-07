@@ -1,0 +1,25 @@
+import { useState } from "react";
+import api, { getApiErrorMessage } from "../../utils/axios";
+import { verificationFocus, verificationInput } from "../../utils/profileVerification";
+
+const labels = { approve: "Approve verification", reject: "Reject verification", revoke: "Revoke verification" };
+const checks = ["I checked the business identity and the named contact.", "I checked the contact details independently.", "The profile accurately represents the professional being approved."];
+
+export default function VerificationActions({ data, disabled, onChanged }) {
+  const { profile, verification, eligibility, owner } = data;
+  const actions = verification.status === "verified" ? ["revoke"] : [...(eligibility.canApprove ? ["approve"] : []), ...(verification.status === "unverified" ? ["reject"] : [])];
+  const [action, setAction] = useState(actions[0] || "");
+  const [reason, setReason] = useState("");
+  const [confirmed, setConfirmed] = useState([]);
+  const [review, setReview] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const ready = reason.trim() && (action !== "approve" || confirmed.length === checks.length);
+  async function submit() {
+    setSaving(true); setError("");
+    try { const response = await api.post(`/admin/verification/${profile.type}/${profile._id}`, { action, reason: reason.trim(), expectedVersion: verification.version }); await onChanged({ message: response.data.message, error: false }); }
+    catch (failure) { setReview(false); if (failure.response?.status === 409) await onChanged({ message: getApiErrorMessage(failure), error: true }); else setError(getApiErrorMessage(failure, "Unable to change verification.")); }
+    finally { setSaving(false); }
+  }
+  return <section className="mt-6 rounded-2xl border border-brand-navy/10 bg-white p-5 sm:p-6"><h2 className="text-lg font-semibold">Verification decision</h2><p className="mt-2 text-sm text-brand-charcoal">Approve after checking the business identity and contact details independently. The decision reason is visible to the profile owner.</p>{eligibility.missingFields.length > 0 && <p className="mt-4 text-sm text-amber-800">Needed before approval: {eligibility.missingFields.join(", ")}.</p>}{owner.accountStatus !== "active" && <p className="mt-3 text-sm text-amber-800">Restore active account access before approving this profile.</p>}{actions.length ? <form onSubmit={(event) => { event.preventDefault(); setError(""); if (ready) setReview(true); }} className="mt-5"><fieldset disabled={disabled || saving || review} className="space-y-4"><legend className="sr-only">Verification decision</legend><label className="block text-sm font-medium">Action<select value={action} onChange={(event) => { setAction(event.target.value); setConfirmed([]); }} className={`mt-2 ${verificationInput}`}>{actions.map((value) => <option key={value} value={value}>{labels[value]}</option>)}</select></label>{action === "approve" && <fieldset className="space-y-3"><legend className="mb-3 text-sm font-medium">Confirm your review</legend>{checks.map((label, index) => <label key={label} className="flex items-start gap-3 text-sm"><input type="checkbox" required checked={confirmed.includes(index)} onChange={(event) => setConfirmed((current) => event.target.checked ? [...current, index] : current.filter((value) => value !== index))} className={`mt-1 accent-brand-navy ${verificationFocus}`} />{label}</label>)}</fieldset>}<label className="block text-sm font-medium">Reason for the profile owner<textarea required maxLength={1000} rows={4} value={reason} onChange={(event) => setReason(event.target.value)} className={`mt-2 resize-y ${verificationInput}`} /></label><button disabled={!ready} className={`rounded-lg bg-brand-navy px-4 py-2.5 text-sm text-white disabled:opacity-50 ${verificationFocus}`}>Review decision</button></fieldset>{review && <div className="mt-4 rounded-xl bg-brand-ivory p-4" role="group" aria-label="Confirm verification decision"><p className="text-sm font-semibold">{labels[action]} for {profile.organization || profile.name}?</p><p className="mt-2 whitespace-pre-wrap break-words text-sm">{reason.trim()}</p><p className="mt-2 text-xs text-gray-500">{action === "approve" ? "The profile will display a verified badge." : "The profile will remain without a verified badge."}</p><div className="mt-4 flex gap-3"><button type="button" onClick={submit} disabled={saving || disabled} className={`rounded-lg bg-brand-royal px-4 py-2 text-sm text-white disabled:opacity-50 ${verificationFocus}`}>{saving ? "Saving…" : "Confirm decision"}</button><button type="button" onClick={() => setReview(false)} disabled={saving} className={`rounded px-3 py-2 text-sm ${verificationFocus}`}>Cancel</button></div></div>}</form> : <p className="mt-4 text-sm text-gray-500">Complete the missing details and restore active access before approving this profile.</p>}{error && <p role="alert" className="mt-4 text-sm text-red-700">{error}</p>}</section>;
+}

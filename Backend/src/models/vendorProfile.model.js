@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const verificationFields = require("./profileVerification.fields");
 
 const VendorProfileSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
@@ -70,12 +71,14 @@ const VendorProfileSchema = new mongoose.Schema({
   jobsCompleted: { type: Number, default: 0 },
   dateRegistered: { type: Date, default: Date.now },
   verified: { type: Boolean, default: false },
+  ...verificationFields,
   active: { type: Boolean, default: true },
+  ...require("./contentModeration.fields"),
   featured: { type: Boolean, default: false },
 
   details: {}, // optional, category-specific details
 
-  approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin" },
+  approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", select: false },
   dateApproved: { type: Date },
   lastUpdated: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now },

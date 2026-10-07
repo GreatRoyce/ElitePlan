@@ -319,8 +319,8 @@ const sendPlannerMessage = async (req, res) => {
     if (!recipientId || !text)
       return res.status(400).json({ message: "recipientId and text required" });
 
-    const recipient = await User.findById(recipientId).select("_id");
-    if (!recipient) {
+    const recipient = await User.findById(recipientId).select("_id archivedAt");
+    if (!recipient || recipient.archivedAt) {
       return res.status(404).json({ message: "Recipient not found" });
     }
 

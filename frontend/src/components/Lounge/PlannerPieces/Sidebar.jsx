@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import {
   LayoutDashboard,
   Calendar,
@@ -160,6 +161,7 @@ const Sidebar = ({
               </span>
             )}
           </button>
+          <Link to="/reports" className="block rounded-xl px-3 py-3 text-sm font-medium text-brand-charcoal hover:bg-brand-ivory focus-visible:ring-2 focus-visible:ring-brand-gold">My reports</Link>
         </nav>
 
         {/* Footer - Logout */}

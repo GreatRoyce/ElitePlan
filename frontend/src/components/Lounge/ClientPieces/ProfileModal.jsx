@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { X, Bookmark, Calendar, Image, ZoomIn } from "lucide-react";
+import { Link } from "react-router-dom";
 import StarRating from "./StarRating";
 import { log, warn } from "../../../utils/logger";
 
@@ -17,6 +18,7 @@ export default function ProfileModal({
   if (!selectedProfile) return null;
 
   const p = selectedProfile;
+  const accountId = p.raw?.userId?._id || p.raw?.userId;
   const isBookmarked = bookmarkedProfiles.has(p.id);
 
   log("Selected profile data:", selectedProfile);
@@ -250,6 +252,7 @@ export default function ProfileModal({
                 <Calendar size={18} />
                 Request Consultation
               </button>
+              {/^[a-f0-9]{24}$/i.test(accountId || "") && <Link to={`/reports/new?type=account&targetId=${accountId}`} className="rounded-lg px-4 py-2 text-sm text-brand-charcoal hover:underline focus-visible:ring-2 focus-visible:ring-brand-gold">Report account</Link>}
             </div>
           </div>
         </div>

@@ -1,4 +1,5 @@
 const PlannerProfile = require("../../models/plannerProfile.model");
+const { publicProfile, ownerProjection } = require("../../services/profileVerification.service");
 
 // ✅ Helper: Normalize path for all OS
 const normalizePath = (filePath) => filePath?.replace(/\\/g, "/");
@@ -19,9 +20,9 @@ const uploadPlannerProfileImage = async (req, res) => {
 
     const planner = await PlannerProfile.findOneAndUpdate(
       { userId },
-      { profileImage: imagePath, lastUpdated: Date.now() },
+      { $set: { profileImage: imagePath, lastUpdated: Date.now() }, $inc: { verificationVersion: 1 } },
       { new: true }
-    );
+    ).select(ownerProjection);
 
     if (!planner)
       return res
@@ -31,7 +32,7 @@ const uploadPlannerProfileImage = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Profile image uploaded successfully",
-      data: { profileImage: imagePath, planner },
+      data: { profileImage: imagePath, planner: publicProfile(planner, true) },
     });
   } catch (error) {
     console.error("Upload Profile Image Error:", error);
@@ -61,9 +62,9 @@ const uploadPlannerGallery = async (req, res) => {
 
     const planner = await PlannerProfile.findOneAndUpdate(
       { userId },
-      { $push: { gallery: { $each: imagePaths } }, lastUpdated: Date.now() },
+      { $push: { gallery: { $each: imagePaths } }, $set: { lastUpdated: Date.now() }, $inc: { verificationVersion: 1 } },
       { new: true }
-    );
+    ).select(ownerProjection);
 
     if (!planner)
       return res
@@ -73,7 +74,7 @@ const uploadPlannerGallery = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Gallery images uploaded successfully",
-      data: { gallery: imagePaths, planner },
+      data: { gallery: imagePaths, planner: publicProfile(planner, true) },
     });
   } catch (error) {
     console.error("Upload Gallery Error:", error);

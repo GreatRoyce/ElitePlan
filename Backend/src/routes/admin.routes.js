@@ -1,0 +1,35 @@
+const express = require("express");
+const authMiddleware = require("../middleware/authMiddleware");
+const { getOverview } = require("../controllers/admin.controller");
+const { getAnalytics } = require("../microservices/analytics/analytics.controller");
+const { listUsers, listArchivedUsers, getUserDetails } = require("../controllers/adminUsers.controller");
+const { moderateAccount } = require("../controllers/accountModeration.controller");
+const { archiveAccount } = require("../controllers/accountArchive.controller");
+const { manageModerator } = require("../controllers/staff.controller");
+const { adminOnly, requirePermission, requireModerationPermission } = require("../middleware/staffPermission");
+const reports = require("../controllers/reports.controller");
+const verification = require("../controllers/profileVerification.controller");
+const content = require("../controllers/contentModeration.controller");
+
+const router = express.Router();
+router.use(authMiddleware(["admin", "moderator"]));
+router.get("/overview", adminOnly, getOverview);
+router.get("/content", requirePermission("content.read"), content.noStore, content.listProfiles);
+router.get("/content/:type/:profileId", requirePermission("content.read"), content.noStore, content.getProfile);
+router.post("/content/:type/:profileId", requirePermission("content.read"), requirePermission("content.manage"), content.noStore, content.moderate);
+router.get("/verification", adminOnly, verification.noStore, verification.listProfiles);
+router.get("/verification/:type/:profileId", adminOnly, verification.noStore, verification.getProfile);
+router.post("/verification/:type/:profileId", adminOnly, verification.noStore, verification.verifyProfile);
+router.get("/analytics", requirePermission("analytics.read"), getAnalytics);
+router.get("/users", requirePermission("users.read"), listUsers);
+router.get("/archive", adminOnly, listArchivedUsers);
+router.get("/users/:userId", requirePermission("users.read"), getUserDetails);
+router.post("/users/:userId/moderation", requireModerationPermission, moderateAccount);
+router.post("/users/:userId/archive", adminOnly, archiveAccount);
+router.post("/users/:userId/staff", adminOnly, manageModerator);
+router.get("/reports", requirePermission("reports.read"), reports.noStore, reports.listStaff);
+router.get("/reports/reviewers", adminOnly, reports.noStore, reports.reviewers);
+router.get("/reports/:reportId", requirePermission("reports.read"), reports.noStore, reports.getStaff);
+router.post("/reports/:reportId/actions", requirePermission("reports.read"), requirePermission("reports.manage"), reports.noStore, reports.updateReport);
+
+module.exports = router;

@@ -1,0 +1,12 @@
+const express = require("express");
+const { rateLimit } = require("express-rate-limit");
+const authMiddleware = require("../middleware/authMiddleware");
+const { memberRoles } = require("../services/staffAccess.service");
+const reports = require("../controllers/reports.controller");
+const router = express.Router();
+router.use(authMiddleware(memberRoles), reports.noStore);
+router.get("/context", reports.getContext);
+router.get("/", reports.listMine);
+router.get("/:reportId", reports.getMine);
+router.post("/", rateLimit({ windowMs: 3600000, limit: 10, keyGenerator: (req) => String(req.user._id), standardHeaders: "draft-8", legacyHeaders: false, message: { success: false, message: "You have reached the report submission limit. Please try again later." } }), reports.createReport);
+module.exports = router;

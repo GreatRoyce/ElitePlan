@@ -10,6 +10,13 @@ const User = require("../models/user.model");
 // ========================================================
 const createConsultation = async (req, res) => {
   try {
+    const recipient = await User.findById(req.body.targetUser).select("_id archivedAt role");
+    if (!recipient || recipient.archivedAt || !["vendor", "planner"].includes(recipient.role)) return res.status(404).json({ success: false, message: "Recipient not found" });
+    const targetType = recipient.role === "vendor" ? "VendorProfile" : "PlannerProfile";
+    if (req.body.targetType !== targetType) return res.status(400).json({ success: false, message: "Recipient profile type does not match." });
+    const TargetProfile = recipient.role === "vendor" ? VendorProfile : PlannerProfile;
+    const recipientProfile = await TargetProfile.findOne({ userId: recipient._id, active: { $ne: false } }).select("_id active").lean();
+    if (!recipientProfile || recipientProfile.active === false) return res.status(404).json({ success: false, message: "Recipient listing not available" });
     const consultation = await Consultation.create({
       ...req.body,
       user: req.user._id,
@@ -23,21 +30,8 @@ const createConsultation = async (req, res) => {
       profileType: req.profileType || "User",
     };
 
-    const recipientUserId = consultation.targetUser;
     const recipientModel = consultation.targetType;
-
-    let recipientProfileId = recipientUserId;
-    if (recipientModel === "PlannerProfile") {
-      const profile = await PlannerProfile.findOne({ user: recipientUserId })
-        .select("_id")
-        .lean();
-      if (profile) recipientProfileId = profile._id;
-    } else if (recipientModel === "VendorProfile") {
-      const profile = await VendorProfile.findOne({ user: recipientUserId })
-        .select("_id")
-        .lean();
-      if (profile) recipientProfileId = profile._id;
-    }
+    const recipientProfileId = recipientProfile._id;
 
     // Create notification
     await createNotification(
@@ -63,10 +57,7 @@ const getMyConsultations = async (req, res) => {
     const userId = req.user._id;
     const userRole = req.user.role;
 
-    let filter = { status: "pending" };
-    if (userRole === "Client") filter.user = userId;
-    else if (userRole === "Planner") filter.planner = userId;
-    else if (userRole === "Vendor") filter.vendor = userId;
+    const filter = { status: "pending", $or: [{ user: userId }, { targetUser: userId }] };
 
     let query = Consultation.find(filter).sort({ createdAt: -1 });
 

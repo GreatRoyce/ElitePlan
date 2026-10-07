@@ -17,6 +17,9 @@ import {
 import { FaLocationDot } from "react-icons/fa6";
 import api from "../../../utils/axios";
 import { log } from "../../../utils/logger";
+import VerificationStatus from "../../Verification/VerificationStatus";
+import ContentNotice from "../../Moderation/ContentNotice";
+import { vendorProfileForEditor, vendorVerificationFields } from "../../../utils/vendorProfileData";
 
 // ✅ Helper to construct full image URL
 const getImageUrl = (path) => {
@@ -57,17 +60,11 @@ export default function VendorProfile() {
 
   // ✅ Vendor category options
   const vendorCategoryOptions = [
-    "Catering",
-    "Photography",
-    "Decoration",
-    "Entertainment",
-    "Logistics",
-    "Venue",
-    "Security",
-    "Rentals",
-    "Makeup",
-    "Fashion",
-    "Other",
+    "Venue & Accommodation", "Food & Beverage", "Entertainment & Hosting",
+    "Decor & Ambience", "Guest Experience", "Security & Logistics",
+    "Media & Documentation", "Fashion & Beauty", "Transport & Rentals",
+    "Print & Branding", "Tech & Digital", "Health & Safety",
+    "Traditional Engagement", "Kids Entertainment", "Cleaning Services",
   ];
 
   // ✅ Fetch vendor profile
@@ -78,9 +75,9 @@ export default function VendorProfile() {
         const res = await api.get("/vendor-profile/me");
         log("Fetched profile:", res.data);
         
-        if (res.data) {
-          setFormData(res.data);
-          setDraftData(res.data);
+        if (res.data.data) {
+          setFormData(vendorProfileForEditor(res.data.data));
+          setDraftData(vendorProfileForEditor(res.data.data));
         } else {
           // Initialize with empty state if no profile exists
           const emptyProfile = {
@@ -440,7 +437,7 @@ export default function VendorProfile() {
       
       // Prepare data for API - only send text fields
       const profileData = {
-        name: draftData.name,
+        ...vendorVerificationFields(draftData),
         description: draftData.description,
         category: draftData.category,
         // Include additional fields if they exist
@@ -468,8 +465,8 @@ export default function VendorProfile() {
       const res = await api.put("/vendor-profile/update/me", profileData);
       log("Profile saved successfully:", res.data);
 
-      setFormData(res.data);
-      setDraftData(res.data);
+      setFormData(vendorProfileForEditor(res.data.data));
+      setDraftData(vendorProfileForEditor(res.data.data));
       setIsEditing(false);
       setSuccessMessage("✅ Profile saved successfully!");
     } catch (err) {
@@ -589,6 +586,8 @@ export default function VendorProfile() {
       </div>
 
       {/* Tabs */}
+      <VerificationStatus profile={formData || draftData} />
+      <ContentNotice profile={formData || draftData} />
       <div className="flex gap-1 mb-6 border-b border-navy/20 overflow-x-auto">
         {tabs.map((tab) => (
           <button
@@ -689,6 +688,9 @@ export default function VendorProfile() {
             </div>
 
             <div className="md:col-span-2">
+              <div className="mb-5 grid gap-4 sm:grid-cols-2">
+                {[ ["Contact person", "contactPerson", "text"], ["Business email", "email", "email"], ["Primary phone", "phone", "tel"] ].map(([label, name, type]) => <label key={name} className="block font-medium text-navy">{label}<input type={type} name={name} value={activeData[name] || ""} readOnly={!isEditing} onChange={handleInputChange} className={getInputClasses(isEditing)} /></label>)}
+              </div>
               <label className="font-medium text-navy">Description *</label>
               <textarea
                 name="description"
