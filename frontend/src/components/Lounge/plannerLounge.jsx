@@ -1,3 +1,4 @@
+import AdvertPlacement from "../Adverts/AdvertPlacement";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import io from "socket.io-client";
@@ -202,6 +203,7 @@ export default function PlannerLounge() {
         />
 
         <main className="flex-1 overflow-y-auto p-6 space-y-8">
+          {activeSection === "overview" && <AdvertPlacement placement="dashboard" />}
           {renderContent()}
         </main>
       </div>

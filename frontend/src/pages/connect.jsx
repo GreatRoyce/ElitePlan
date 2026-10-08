@@ -18,6 +18,7 @@ import {
   MdAccessTime,
 } from "react-icons/md";
 import SignUpForm from "../components/Auth/signupform";
+import AdvertPlacement from "../components/Adverts/AdvertPlacement";
 
 const cards = [
   {
@@ -155,6 +156,7 @@ function Connect() {
             </div>
           </section>
 
+          <div className="mx-auto max-w-6xl px-4"><AdvertPlacement placement="home" /></div>
           <section className="py-20 text-center justify-center items-center z-10 relative">
             <div className="capitalize text-xl sm:text-2xl md:text-3xl font-semibold mb-4">
               How elitePlan works

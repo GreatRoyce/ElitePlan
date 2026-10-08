@@ -13,6 +13,12 @@ const links = [
   { to: "/admin/reports", label: "Reports & complaints", icon: Flag },
   { to: "/admin/verification", label: "Profile verification", icon: ShieldCheck },
   { to: "/admin/content", label: "Content moderation", icon: ShieldCheck },
+  { to: "/admin/operations", label: "Consultations & events", icon: LayoutDashboard },
+  { to: "/admin/support", label: "Support & appeals", icon: Flag },
+  { to: "/admin/announcements", label: "Announcements", icon: Flag },
+  { to: "/admin/adverts", label: "Adverts", icon: Flag },
+  { to: "/admin/audit", label: "Staff audit history", icon: ShieldCheck },
+  { to: "/admin/platform", label: "Platform health & settings", icon: ShieldCheck },
 ];
 
 export default function AdminLayout({ children, loading = false }) {
@@ -32,7 +38,7 @@ export default function AdminLayout({ children, loading = false }) {
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-navy text-brand-gold"><ShieldCheck size={22} aria-hidden="true" /></div>
           <div><p className="text-xl font-bold">ElitePlan</p><p className="text-xs text-gray-500">{moderator ? "Moderator portal" : "Admin portal"}</p></div>
         </div>
-        <nav aria-label={moderator ? "Moderator navigation" : "Admin navigation"} className="mt-5 space-y-2 lg:mt-8 lg:flex-1">
+        <nav aria-label={moderator ? "Moderator navigation" : "Admin navigation"} className="mt-5 space-y-2 lg:mt-8 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
           {navigation.map((item) => {
             const Icon = item.icon;
             return (

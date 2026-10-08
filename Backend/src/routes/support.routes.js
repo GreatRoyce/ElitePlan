@@ -1,0 +1,15 @@
+const express = require("express");
+const { rateLimit } = require("express-rate-limit");
+const support = require("../controllers/support.controller");
+const supportAuth = require("../middleware/supportAuth");
+const router = express.Router();
+router.use(support.noStore);
+router.post("/session", rateLimit({ windowMs: 15 * 60000, limit: 20, standardHeaders: "draft-8", legacyHeaders: false, message: { success: false, message: "Too many support sign-in attempts. Try again later." } }), support.session);
+router.use(supportAuth);
+router.get("/me", support.me);
+router.get("/tickets", support.listMine);
+router.get("/tickets/:ticketId", support.getMine);
+const memberLimit = (limit, message) => rateLimit({ windowMs: 3600000, limit, keyGenerator: (req) => String(req.user._id), standardHeaders: "draft-8", legacyHeaders: false, message: { success: false, message } });
+router.post("/tickets", memberLimit(10, "You reached the support submission limit. Please try again later."), support.create);
+router.post("/tickets/:ticketId/replies", memberLimit(30, "You reached the support reply limit. Please try again later."), support.reply);
+module.exports = router;

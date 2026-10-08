@@ -119,6 +119,8 @@ function Login({ onLogin }) {
               </a>
             </div>
 
+            <Link to="/support" className="mb-4 block rounded text-xs text-brand-navy underline focus-visible:ring-2 focus-visible:ring-brand-gold">Need help or want to appeal an account restriction?</Link>
+
             <button
               type="submit"
               disabled={loading}

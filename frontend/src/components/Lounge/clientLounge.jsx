@@ -1,3 +1,4 @@
+import AdvertPlacement from "../Adverts/AdvertPlacement";
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import api, { getApiErrorMessage } from "../../utils/axios";
 import { useNavigate } from "react-router-dom";
@@ -463,7 +464,7 @@ export default function ClientLounge() {
         />
         {/* Scrollable Main Content */}
         <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto w-full">{renderContent()}</div>
+          <div className="max-w-7xl mx-auto w-full">{activeSection === "overview" && <AdvertPlacement placement="dashboard" />}{renderContent()}</div>
         </main>
       </div>
 

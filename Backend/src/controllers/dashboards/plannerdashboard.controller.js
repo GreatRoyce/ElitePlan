@@ -6,6 +6,7 @@ const VendorProfile = require("../../models/vendorProfile.model");
 const PlannerProfile = require("../../models/plannerProfile.model");
 const Message = require("../../models/message.model");
 const User = require("../../models/user.model");
+const oversight = require("../../services/oversight.service");
 const {
   updateDashboard,
   addPayment,
@@ -46,7 +47,8 @@ const getDashboard = async (req, res) => {
     }).populate("user", "username imageCover");
 
     const dashboardObject = dashboard.toObject();
-    dashboardObject.pendingRequests = pendingRequests;
+    dashboardObject.events = (dashboardObject.events || []).map(oversight.memberRecord);
+    dashboardObject.pendingRequests = pendingRequests.map(oversight.memberRecord);
     dashboardObject.plannerProfile = plannerProfile;
     dashboardObject.companyName =
       plannerProfile?.companyName || req.user.username || "Planner";
@@ -66,8 +68,9 @@ const updateEventStatus = async (req, res) => {
     const plannerId = req.user._id;
     const { eventId } = req.params;
     const { status } = req.body;
+    if (!oversight.idValid(eventId) || !["upcoming", "ongoing", "completed", "cancelled"].includes(status) || Object.keys(req.body).some((key) => key !== "status")) return res.status(400).json({ success: false, message: "Invalid event status." });
 
-    const dashboard = await PlannerDashboard.findOne({ planner: plannerId });
+    const dashboard = await PlannerDashboard.findOne({ planner: plannerId }).select(oversight.boardProjection);
     if (!dashboard)
       return res
         .status(404)
@@ -79,13 +82,13 @@ const updateEventStatus = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Event not found" });
 
-    event.status = status;
-    event.updatedAt = Date.now();
-
-    updateDashboard(dashboard);
-    await dashboard.save();
-
-    res.json({ success: true, data: dashboard });
+    const transitions = { upcoming: ["ongoing", "cancelled"], ongoing: ["completed", "cancelled"], completed: [], cancelled: [] };
+    if (!transitions[event.status]?.includes(status)) return res.status(409).json({ success: false, message: "This event cannot move to that status. Refresh before retrying." });
+    const updated = await PlannerDashboard.findOneAndUpdate({ _id: dashboard._id, planner: plannerId, events: { $elemMatch: { _id: event._id, status: event.status, ...oversight.versionFilter(event) } } }, { $set: { "events.$.status": status, "events.$.updatedAt": new Date() }, $inc: { "events.$.oversightVersion": 1, __v: 1 }, $push: { "events.$.oversightHistory": { $each: [{ action: "member_status", by: plannerId, at: new Date(), reason: "Planner updated their event status.", from: event.status, to: status }], $slice: -100 } } }, { new: true, runValidators: true });
+    if (!updated) return res.status(409).json({ success: false, message: "The event changed during this update. Refresh before retrying." });
+    updateDashboard(updated);
+    const safe = updated.toObject(); safe.events = safe.events.map(oversight.memberRecord);
+    res.json({ success: true, data: safe });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Server error" });

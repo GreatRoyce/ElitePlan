@@ -3,12 +3,15 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { X } from "lucide-react";
 import { MdBusiness, MdPerson, MdStore } from "react-icons/md";
 import api from "../../utils/axios";
+import usePlatformAvailability from "../../hooks/usePlatformAvailability";
+import AvailabilityNotice from "../Platform/AvailabilityNotice";
 
 function SignUpForm({ layout = "modal", onClose, onSuccess }) {
   const navigate = useNavigate();
   const location = useLocation();
   const modalRef = useRef(null);
   const isPage = layout === "page";
+  const availability = usePlatformAvailability();
 
   const [role, setRole] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -184,6 +187,7 @@ function SignUpForm({ layout = "modal", onClose, onSuccess }) {
       setMessageType("error");
       return setMessage("Please select a role first.");
     }
+    if (!availability.data?.registration[role]) return;
     setIsSubmitting(true);
     try {
       const res = await api.post("/auth/register", { ...formData, role });
@@ -272,12 +276,14 @@ function SignUpForm({ layout = "modal", onClose, onSuccess }) {
         </div>
 
         {/* === ROLE SELECTION === */}
+        {!role && <AvailabilityNotice availability={availability} registration />}
         {!role ? (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto">
             {userTypes.map((u) => (
               <button
                 key={u.id}
                 type="button"
+                disabled={!availability.data?.registration[u.id]}
                 className="group w-full cursor-pointer text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-royal/30 rounded-xl"
                 onClick={() => setRole(u.id)}
               >
@@ -296,7 +302,7 @@ function SignUpForm({ layout = "modal", onClose, onSuccess }) {
                   <span
                     className={`w-full py-2.5 rounded-lg ${roleConfig[u.id].bg} text-white text-center text-[12px] font-bold group-hover:opacity-90`}
                   >
-                    Register as {u.title}
+                    {availability.data?.registration[u.id] === false ? "Registration paused" : `Register as ${u.title}`}
                   </span>
                 </div>
               </button>
@@ -351,6 +357,7 @@ function SignUpForm({ layout = "modal", onClose, onSuccess }) {
               </div>
 
               {/* Form grid layout */}
+              <AvailabilityNotice availability={availability} registration role={role} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[14px]">
                 {/* Left Column */}
                 <div className="space-y-3">
@@ -463,7 +470,7 @@ function SignUpForm({ layout = "modal", onClose, onSuccess }) {
               <div className="mt-4 flex flex-col md:flex-row items-center justify-between gap-3">
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !availability.data?.registration[role]}
                   className={`w-full md:w-auto px-6 py-2.5 rounded-md text-white text-[12px] font-medium ${roleConfig[role].bg} hover:opacity-90 disabled:cursor-wait disabled:opacity-60`}
                 >
                   {isSubmitting ? "Creating account..." : "Register"}

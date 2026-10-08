@@ -7,6 +7,7 @@ const VendorProfile = require("../models/vendorProfile.model");
 const PlannerProfile = require("../models/plannerProfile.model");
 const { accountRestriction, currentWarning } = require("../services/accountAccess.service");
 const { grantedPermissions } = require("../services/staffAccess.service");
+const platformSettings = require("../services/platformSettings.service");
 
 // ==============================
 // 🧍 REGISTER USER (All Roles)
@@ -20,6 +21,7 @@ const registerUser = async (req, res) => {
     if (!validRoles.includes(role)) {
       return res.status(400).json({ message: "Invalid role" });
     }
+    if (!await platformSettings.allow(req, res, "registration", role)) return;
 
     // 2️⃣ Check if email exists
     const existingUser = await User.findOne({ email });

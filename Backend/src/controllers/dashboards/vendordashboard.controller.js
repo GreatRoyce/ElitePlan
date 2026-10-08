@@ -9,6 +9,7 @@ const {
 const Message = require("../../models/message.model");
 const Event = require("../../models/event.model");
 const User = require("../../models/user.model");
+const oversight = require("../../services/oversight.service");
 
 // -------------------- GET CONVERSATIONS --------------------
 
@@ -129,7 +130,7 @@ const getVendorDashboard = async (req, res) => {
 
     // 1. Fetch the main vendor profile
     const vendorProfile = await VendorProfile.findOne({
-      user: vendorId,
+      userId: vendorId,
     }).lean();
     if (!vendorProfile) {
       return res.status(404).json({
@@ -148,7 +149,7 @@ const getVendorDashboard = async (req, res) => {
 
     // 3. Fetch assigned events
     const assignedEvents = await Event.find({
-      "vendors.vendor": vendorProfile._id,
+      vendors: vendorProfile._id,
     })
       .populate("client", "username firstName")
       .lean();
@@ -156,13 +157,13 @@ const getVendorDashboard = async (req, res) => {
     // 4. Construct the dashboard object
     const dashboardData = {
       ...vendorProfile, // Spread the profile data
-      pendingRequests,
-      assignedEvents,
+      pendingRequests: pendingRequests.map(oversight.memberRecord),
+      assignedEvents: assignedEvents.map(oversight.memberRecord),
       // You can add more stats here as needed
       vendorStats: {
         totalBookings: assignedEvents.length,
         completedBookings: assignedEvents.filter(
-          (e) => e.status === "completed",
+          (e) => e.status === "Completed",
         ).length,
         // other stats...
       },

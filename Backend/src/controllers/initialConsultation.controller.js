@@ -4,12 +4,16 @@ const PlannerProfile = require("../models/plannerProfile.model");
 const VendorProfile = require("../models/vendorProfile.model");
 const Message = require("../models/message.model");
 const User = require("../models/user.model");
+const oversight = require("../services/oversight.service");
+const platformSettings = require("../services/platformSettings.service");
 
 // ========================================================
 // Create Consultation Request
 // ========================================================
 const createConsultation = async (req, res) => {
   try {
+    if (!req.body || typeof req.body !== "object" || Array.isArray(req.body) || !oversight.idValid(req.body.targetUser) || !["PlannerProfile", "VendorProfile"].includes(req.body.targetType)) return res.status(400).json({ success: false, message: "Provide a valid professional recipient and profile type." });
+    if (!await platformSettings.allow(req, res, "consultations")) return;
     const recipient = await User.findById(req.body.targetUser).select("_id archivedAt role");
     if (!recipient || recipient.archivedAt || !["vendor", "planner"].includes(recipient.role)) return res.status(404).json({ success: false, message: "Recipient not found" });
     const targetType = recipient.role === "vendor" ? "VendorProfile" : "PlannerProfile";
@@ -17,8 +21,9 @@ const createConsultation = async (req, res) => {
     const TargetProfile = recipient.role === "vendor" ? VendorProfile : PlannerProfile;
     const recipientProfile = await TargetProfile.findOne({ userId: recipient._id, active: { $ne: false } }).select("_id active").lean();
     if (!recipientProfile || recipientProfile.active === false) return res.status(404).json({ success: false, message: "Recipient listing not available" });
+    const editable = ["targetUser", "targetType", "fullName", "eventType", "eventDate", "eventTime", "eventLocation", "guests", "services", "vendorType", "notes", "consent", "contactMethod"];
     const consultation = await Consultation.create({
-      ...req.body,
+      ...Object.fromEntries(editable.filter((key) => Object.hasOwn(req.body, key)).map((key) => [key, req.body[key]])),
       user: req.user._id,
       status: "pending",
     });
@@ -42,10 +47,10 @@ const createConsultation = async (req, res) => {
       "consultation",
     );
 
-    res.status(201).json({ success: true, consultation });
+    res.status(201).json({ success: true, consultation: oversight.memberRecord(consultation) });
   } catch (err) {
     console.error("❌ Error creating consultation:", err);
-    res.status(500).json({ success: false, message: err.message });
+    res.status(err.name === "ValidationError" ? 400 : 500).json({ success: false, message: err.name === "ValidationError" ? "Provide valid consultation details." : "Unable to create this consultation." });
   }
 };
 
@@ -70,7 +75,7 @@ const getMyConsultations = async (req, res) => {
     const consultations = await query.exec();
 
     console.log("✅ Fetched consultations for", userRole, consultations.length);
-    res.status(200).json(consultations);
+    res.status(200).json(consultations.map(oversight.memberRecord));
   } catch (err) {
     console.error("❌ Error in getMyConsultations:", err);
     res.status(500).json({ message: "Server error fetching consultations" });
@@ -85,28 +90,29 @@ const updateConsultationStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!["approved", "declined"].includes(status)) {
+    if (!oversight.idValid(id) || !["approved", "declined"].includes(status) || Object.keys(req.body).some((key) => key !== "status")) {
       return res
         .status(400)
         .json({ message: "Status must be 'approved' or 'declined'" });
     }
 
-    // Update consultation status
-    const updated = await Consultation.findByIdAndUpdate(
-      id,
-      {
-        status,
-        approvedAt: status === "approved" ? new Date() : undefined,
-        rejectedAt: status === "declined" ? new Date() : undefined,
-      },
-      { new: true },
+    const targetType = { vendor: "VendorProfile", planner: "PlannerProfile" }[req.user.role];
+    if (!targetType) return res.status(403).json({ message: "Only the receiving professional can decide a request." });
+    const current = await Consultation.findOne({ _id: id, targetUser: req.user._id, targetType }).select(oversight.projection).lean();
+    if (!current) return res.status(404).json({ message: "Consultation not found" });
+    if (current.status !== "pending") return res.status(409).json({ message: "This request is no longer pending. Refresh its details." });
+    const now = new Date();
+    const updated = await Consultation.findOneAndUpdate(
+      { _id: id, targetUser: req.user._id, targetType, status: "pending", ...oversight.versionFilter(current) },
+      { $set: { status, ...(status === "approved" ? { approvedAt: now } : { rejectedAt: now }) }, $inc: { oversightVersion: 1 }, $push: { oversightHistory: { $each: [{ action: "member_status", by: req.user._id, at: now, reason: "Receiving professional decided the request.", from: "pending", to: status }], $slice: -100 } } },
+      { new: true, runValidators: true },
     )
       .populate("client", "_id firstName username email imageCover") // virtual
       .populate("receiver", "_id firstName username email imageCover") // virtual
       .populate("user", "_id firstName username email imageCover"); // original user as fallback
 
     if (!updated) {
-      return res.status(404).json({ message: "Consultation not found" });
+      return res.status(409).json({ message: "The request changed during this decision. Refresh before retrying." });
     }
 
     // Determine the client (recipient)
@@ -121,7 +127,8 @@ const updateConsultationStatus = async (req, res) => {
       (updated.targetType === "PlannerProfile" ? updated.receiver : null) ||
       updated.user;
 
-    if (status === "approved" && client?._id && sender?._id) {
+    let messageWarning = false;
+    try { if (status === "approved" && client?._id && sender?._id) {
       const systemMessage = await Message.create({
         sender: sender._id,
         senderModel: "User",
@@ -149,9 +156,9 @@ const updateConsultationStatus = async (req, res) => {
           .lean();
         io.to(clientSocket.socketId).emit("receive_message", populatedMessage);
       }
-    }
+    } } catch (error) { console.error("Consultation approval message failed:", error.message); messageWarning = true; }
 
-    res.status(200).json({ success: true, consultation: updated });
+    res.status(200).json({ success: true, consultation: oversight.memberRecord(updated), messageWarning });
   } catch (err) {
     console.error("❌ Error updating consultation:", err);
     res.status(500).json({ message: "Error updating consultation" });
@@ -163,12 +170,17 @@ const updateConsultationStatus = async (req, res) => {
 // ========================================================
 const deleteConsultation = async (req, res) => {
   try {
-    const deleted = await Consultation.findByIdAndDelete(req.params.id);
+    if (!oversight.idValid(req.params.id)) return res.status(400).json({ message: "Invalid consultation ID" });
+    const current = await Consultation.findOne({ _id: req.params.id, user: req.user._id }).select(oversight.projection).lean();
+    if (!current) return res.status(404).json({ message: "Consultation not found" });
+    if (current.status !== "pending" || current.oversightFlag || current.oversightHistory?.length) return res.status(409).json({ message: "A reviewed or decided request is retained. Contact support to resolve it." });
+    const deleted = await Consultation.findOneAndDelete({ _id: current._id, user: req.user._id, status: "pending", ...oversight.versionFilter(current) });
     if (!deleted)
-      return res.status(404).json({ message: "Consultation not found" });
+      return res.status(409).json({ message: "The request changed. Refresh before retrying." });
     res.status(200).json({ message: "Consultation deleted" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("Consultation deletion failed:", err.message);
+    res.status(500).json({ message: "Unable to delete this consultation." });
   }
 };
 
@@ -177,14 +189,13 @@ const deleteConsultation = async (req, res) => {
 // ========================================================
 const getPendingConsultations = async (req, res) => {
   try {
-    const consultations = await Consultation.find({ status: "pending" })
+    if (!["vendor", "planner"].includes(req.user.role)) return res.status(403).json({ message: "Only professionals can review incoming requests." });
+    const consultations = await Consultation.find({ status: "pending", targetUser: req.user._id })
       .populate("user", "username name imageCover")
-      .populate("planner", "username name imageCover")
-      .populate("vendor", "username name imageCover")
       .sort({ createdAt: -1 });
 
     console.log("✅ Fetched all pending consultations:", consultations.length);
-    res.status(200).json(consultations);
+    res.status(200).json(consultations.map(oversight.memberRecord));
   } catch (err) {
     console.error("❌ Error fetching pending consultations:", err);
     res.status(500).json({ message: "Server error fetching pending requests" });

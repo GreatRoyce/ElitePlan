@@ -48,6 +48,8 @@ export default function Sidebar({ activeSection, setActiveSection, navItems }) {
             </button>
           ))}
           <Link to="/reports" className="block rounded-lg p-3 font-medium text-gray-600 hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-brand-gold">My reports</Link>
+          <Link to="/support" className="block rounded-lg p-3 font-medium text-gray-600 hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-brand-gold">Support &amp; appeals</Link>
+          <Link to="/announcements" className="block rounded-lg p-3 font-medium text-gray-600 hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-brand-gold">Announcements</Link>
         </nav>
 
         <div className="p-4 border-t border-gray-200">
@@ -106,6 +108,8 @@ export default function Sidebar({ activeSection, setActiveSection, navItems }) {
                 </button>
               ))}
               <Link to="/reports" className="block rounded-lg p-3 font-medium text-gray-600 hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-brand-gold">My reports</Link>
+              <Link to="/support" className="block rounded-lg p-3 font-medium text-gray-600 hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-brand-gold">Support &amp; appeals</Link>
+              <Link to="/announcements" className="block rounded-lg p-3 font-medium text-gray-600 hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-brand-gold">Announcements</Link>
             </nav>
 
             <div className="p-4 border-t border-gray-200">

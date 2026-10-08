@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../context/authStore";
 import { getApiErrorMessage } from "../../utils/axios";
 import { getRealtimeClient, releaseRealtimeClient } from "../../utils/realtime";
@@ -44,5 +45,6 @@ export default function AccountNotice() {
       <div className="min-w-0 flex-1"><p className="font-semibold">Account warning</p><p className="mt-1 whitespace-pre-wrap break-words">{warning.reason}</p>{error && <p role="alert" className="mt-2 text-xs text-red-700">{error}</p>}</div>
       <button type="button" onClick={acknowledge} disabled={acknowledging} className="rounded-lg border border-brand-navy/20 bg-white px-3 py-2 text-xs font-medium disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{acknowledging ? "Saving..." : "Acknowledge warning"}</button>
     </div>}
+    <Link to="/support" className="mx-auto mt-2 block max-w-5xl rounded underline focus-visible:ring-2 focus-visible:ring-brand-gold">Contact support or appeal a restriction</Link>
   </div>;
 }

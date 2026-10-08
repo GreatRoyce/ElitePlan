@@ -1,0 +1,17 @@
+import { useState } from "react";
+import api, { getApiErrorMessage } from "../../utils/axios";
+import { operationActions, isStatusAction } from "../../utils/operations";
+import { verificationInput as input, verificationFocus as focus } from "../../utils/profileVerification";
+
+export default function OperationsActions({ data, disabled, onChanged }) {
+  const [action, setAction] = useState(data.allowedActions[0] || "note"), [reason, setReason] = useState(""), [review, setReview] = useState(false), [saving, setSaving] = useState(false), [error, setError] = useState("");
+  async function submit() {
+    setSaving(true); setError("");
+    try {
+      const response = await api.post(`/admin/operations/${data.record.type}/${data.record._id}`, { action, reason: reason.trim(), expectedVersion: data.oversight.version });
+      setReview(false); await onChanged({ message: response.data.message });
+    } catch (failure) { setReview(false); setError(getApiErrorMessage(failure, "Unable to save this review.")); if (failure.response?.status === 409) await onChanged({ error: true, message: getApiErrorMessage(failure) }); }
+    finally { setSaving(false); }
+  }
+  return <section className="mt-6 rounded-2xl bg-white p-5 sm:p-6"><h2 className="text-lg font-semibold">Administrative review</h2><form className="mt-4" onSubmit={(e) => { e.preventDefault(); if (reason.trim()) setReview(true); }}><fieldset disabled={disabled || saving || review}><legend className="sr-only">Review action</legend><label className="text-xs font-medium">Action<select value={action} onChange={(e) => setAction(e.target.value)} className={`mt-2 ${input}`}>{data.allowedActions.map((a) => <option key={a} value={a}>{operationActions[a]}</option>)}</select></label><p className="mt-3 text-sm text-gray-500">{isStatusAction(action) ? action === "reopen" ? "Reopening returns a consultation to pending or an event to upcoming. Participants receive the reason; no professional approval is implied." : "This changes the operational status. Participants receive the reason; payment records and conversations are preserved." : "Notes and follow-up flags are visible only to admins. They do not change the status or notify members."}</p><label className="mt-4 block text-xs font-medium">{isStatusAction(action) ? "Reason shown to participants" : "Private review note"}<textarea required rows={3} maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} className={`mt-2 resize-y ${input}`} /></label><button disabled={!reason.trim()} className={`mt-4 rounded-lg bg-brand-navy px-4 py-2 text-sm text-white disabled:opacity-40 ${focus}`}>Review change</button></fieldset>{review && <div className="mt-4 rounded-xl bg-brand-ivory p-4" role="group" aria-label="Confirm operations action"><p className="text-sm font-semibold">{operationActions[action]}: {data.record.title}?</p><p className="mt-2 whitespace-pre-wrap break-words text-sm">{reason.trim()}</p><div className="mt-4 flex flex-wrap gap-3"><button type="button" onClick={submit} disabled={disabled || saving} className={`rounded-lg bg-brand-royal px-4 py-2 text-sm text-white disabled:opacity-40 ${focus}`}>{saving ? "Saving..." : "Confirm review"}</button><button type="button" onClick={() => setReview(false)} disabled={saving} className={`rounded px-4 py-2 text-sm ${focus}`}>Cancel</button></div></div>}</form>{error && <p role="alert" className="mt-4 text-sm text-red-700">{error}</p>}</section>;
+}

@@ -52,6 +52,7 @@ const initialConsultationSchema = new mongoose.Schema(
     approvedAt: { type: Date },
     rejectedAt: { type: Date },
     completedAt: { type: Date },
+    ...require("./oversight.fields"),
   },
   { timestamps: true }
 );

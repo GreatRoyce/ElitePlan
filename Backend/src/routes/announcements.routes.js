@@ -1,0 +1,12 @@
+const express = require("express");
+const { rateLimit } = require("express-rate-limit");
+const authMiddleware = require("../middleware/authMiddleware");
+const { memberRoles } = require("../services/staffAccess.service");
+const c = require("../controllers/announcements.controller");
+const router = express.Router();
+router.use(c.noStore);
+router.get("/public", rateLimit({ windowMs: 60000, limit: 120, standardHeaders: "draft-8", legacyHeaders: false, message: { success: false, message: "Too many announcement requests. Please try again shortly." } }), c.listPublic);
+router.use(authMiddleware(memberRoles));
+router.get("/mine", c.listMine);
+router.post("/:announcementId/acknowledge", c.acknowledge);
+module.exports = router;

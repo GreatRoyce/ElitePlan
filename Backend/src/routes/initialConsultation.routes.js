@@ -13,7 +13,8 @@ const {
 const authMiddleware = require("../middleware/authMiddleware");
 
 // Apply auth middleware to all routes
-router.use(authMiddleware());
+router.use(authMiddleware(["client", "vendor", "planner"]));
+router.use((req, res, next) => { res.set("Cache-Control", "no-store"); next(); });
 
 // Existing routes
 router.post("/", createConsultation);

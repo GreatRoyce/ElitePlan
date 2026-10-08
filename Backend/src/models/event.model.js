@@ -38,6 +38,7 @@ const eventSchema = new Schema(
       enum: ["Upcoming", "Ongoing", "Completed", "Cancelled"],
       default: "Upcoming",
     },
+    ...require("./oversight.fields"),
   },
   { timestamps: true }
 );

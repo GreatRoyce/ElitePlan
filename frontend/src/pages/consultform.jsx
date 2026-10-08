@@ -12,9 +12,12 @@ import {
 } from "lucide-react";
 import api from "../utils/axios";
 import { useAuth } from "../context/authStore";
+import usePlatformAvailability from "../hooks/usePlatformAvailability";
+import AvailabilityNotice from "../components/Platform/AvailabilityNotice";
 
 export default function ConsultForm() {
   const { user } = useAuth();
+  const availability = usePlatformAvailability();
   const location = useLocation();
   const navigate = useNavigate();
   const { targetUserId, targetType, profileName } = location.state || {};
@@ -191,6 +194,7 @@ export default function ConsultForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!availability.data?.consultationsEnabled) return;
     if (currentStep < 3) {
       setCurrentStep(currentStep + 1);
       window.scrollTo(0, 0);
@@ -317,6 +321,7 @@ export default function ConsultForm() {
           </p>
         </div>
 
+        <AvailabilityNotice availability={availability} />
         {/* Progress Steps */}
         <div className="flex justify-center mb-12">
           <div className="flex items-center space-x-8">
@@ -656,7 +661,7 @@ export default function ConsultForm() {
             <button
               type="submit"
               disabled={
-                isSubmitting || (currentStep === 3 && !formData.consent)
+                isSubmitting || !availability.data?.consultationsEnabled || (currentStep === 3 && !formData.consent)
               }
               className="px-8 py-3 bg-brand-navy text-white rounded-lg hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
             >

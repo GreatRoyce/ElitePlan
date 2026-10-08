@@ -1,0 +1,4 @@
+export default function SettingsAuditChange({ change }) {
+  if (!change) return null;
+  return <section className="mt-6"><h3 className="text-sm font-semibold">Availability change</h3><div className="mt-3 overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th scope="col" className="p-2">Setting</th><th scope="col" className="p-2">Before</th><th scope="col" className="p-2">After</th></tr></thead><tbody>{[...["client", "vendor", "planner"].map((r) => [`${r} signup`, change.before.registration[r], change.after.registration[r]]), ["New consultations", change.before.consultationsEnabled, change.after.consultationsEnabled]].map(([label, before, after]) => <tr key={label}><th scope="row" className="p-2 font-normal capitalize">{label}</th><td className="p-2">{before ? "Open" : "Paused"}</td><td className="p-2">{after ? "Open" : "Paused"}</td></tr>)}</tbody></table></div></section>;
+}

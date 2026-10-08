@@ -18,10 +18,6 @@ app.set("etag", false); // Disable ETag generation
 // ⚙️ Database Connection
 // =======================
 connectDB();
-console.log(
-  "🔍 Attempting to connect to MongoDB with URI:",
-  process.env.MONGO_URI,
-);
 
 // =======================
 // 🔧 Middleware
@@ -58,6 +54,8 @@ if (process.env.NODE_ENV !== "production") {
 app.use("/api/v1/analytics", require("./src/microservices/analytics/analytics.routes"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use("/api/v1/platform", require("./src/routes/platform.routes"));
+app.use("/api/v1/adverts", require("./src/routes/adverts.routes"));
 
 // =======================
 // 🖼️ Static Files
@@ -142,6 +140,8 @@ app.use("/api/v1/consultation", initialConsultationRoutes);
 app.use("/api/v1/bookmarks", bookmarkRoutes);
 app.use("/api/v1/messages", messageRoutes);
 app.use("/api/v1/reports", require("./src/routes/reports.routes"));
+app.use("/api/v1/support", require("./src/routes/support.routes"));
+app.use("/api/v1/announcements", require("./src/routes/announcements.routes"));
 app.use("/api/v1/events", eventRoutes);
 
 // =======================

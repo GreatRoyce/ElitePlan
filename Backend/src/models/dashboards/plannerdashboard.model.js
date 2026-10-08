@@ -9,6 +9,7 @@ const vendorAssignmentSchema = new Schema({
 });
 
 const eventSchema = new Schema({
+  ...require("../oversight.fields"),
   name: { type: String, required: true },
   date: { type: Date, required: true },
   client: { type: Schema.Types.ObjectId, ref: "ClientProfile", required: true },
@@ -75,7 +76,7 @@ const plannerDashboardSchema = new Schema(
       },
     ],
   },
-  { timestamps: true },
+  { timestamps: true, optimisticConcurrency: true },
 );
 
 module.exports = mongoose.model("PlannerDashboard", plannerDashboardSchema);

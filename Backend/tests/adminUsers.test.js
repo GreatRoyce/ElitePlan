@@ -1,3 +1,4 @@
+require("./helpers/staffAuditStub").install();
 const { test, before, beforeEach, after } = require("node:test");
 const assert = require("node:assert/strict");
 const express = require("express");

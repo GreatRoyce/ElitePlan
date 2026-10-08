@@ -1,4 +1,5 @@
 const { test, before, beforeEach, after } = require("node:test");
+require("./helpers/platformSettingsStub").install();
 const assert = require("node:assert/strict");
 const express = require("express");
 const User = require("../src/models/user.model");

@@ -149,6 +149,8 @@ export default function Sidebar({
             )}
           </button>
           <Link to="/reports" className="block rounded-xl px-3 py-3 text-sm font-medium text-brand-charcoal hover:bg-brand-ivory focus-visible:ring-2 focus-visible:ring-brand-gold">My reports</Link>
+          <Link to="/support" className="block rounded-xl px-3 py-3 text-sm font-medium text-brand-charcoal hover:bg-brand-ivory focus-visible:ring-2 focus-visible:ring-brand-gold">Support &amp; appeals</Link>
+          <Link to="/announcements" className="block rounded-xl px-3 py-3 text-sm font-medium text-brand-charcoal hover:bg-brand-ivory focus-visible:ring-2 focus-visible:ring-brand-gold">Announcements</Link>
         </nav>
 
         {/* Footer - Notifications + Logout */}

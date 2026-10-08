@@ -40,6 +40,19 @@ import ProfileVerification from "./pages/admin/ProfileVerification";
 import ProfileVerificationDetails from "./pages/admin/ProfileVerificationDetails";
 import ContentModeration from "./pages/admin/ContentModeration";
 import ContentDetails from "./pages/admin/ContentDetails";
+import Operations from "./pages/admin/Operations";
+import OperationsDetails from "./pages/admin/OperationsDetails";
+import SupportPortal from "./pages/support/SupportPortal";
+import AdminSupport from "./pages/admin/AdminSupport";
+import AdminAnnouncements from "./pages/admin/AdminAnnouncements";
+import AnnouncementDetails from "./pages/admin/AnnouncementDetails";
+import Announcements from "./pages/Announcements";
+import AnnouncementBanner from "./components/Announcements/AnnouncementBanner";
+import StaffAudit from "./pages/admin/StaffAudit";
+import StaffAuditDetails from "./pages/admin/StaffAuditDetails";
+import Platform from "./pages/admin/Platform";
+import Adverts from "./pages/admin/Adverts";
+import AdvertDetails from "./pages/admin/AdvertDetails";
 
 import { useAuth } from "./context/authStore";
 
@@ -73,7 +86,22 @@ function AppContent() {
     <>
     <SiteVisitTracker />
     <AccountNotice />
+    <AnnouncementBanner />
     <Routes>
+      <Route path="/admin/adverts" element={<AdminRoute><Adverts /></AdminRoute>} />
+      <Route path="/admin/adverts/new" element={<AdminRoute><AdvertDetails create /></AdminRoute>} />
+      <Route path="/admin/adverts/:advertId" element={<AdminRoute><AdvertDetails /></AdminRoute>} />
+      <Route path="/admin/platform" element={<AdminRoute><Platform /></AdminRoute>} />
+      <Route path="/admin/audit" element={<AdminRoute><StaffAudit /></AdminRoute>} />
+      <Route path="/admin/audit/:auditId" element={<AdminRoute><StaffAuditDetails /></AdminRoute>} />
+      <Route path="/announcements" element={<Announcements />} />
+      <Route path="/admin/announcements" element={<AdminRoute><AdminAnnouncements /></AdminRoute>} />
+      <Route path="/admin/announcements/new" element={<AdminRoute><AnnouncementDetails create /></AdminRoute>} />
+      <Route path="/admin/announcements/:announcementId" element={<AdminRoute><AnnouncementDetails /></AdminRoute>} />
+      <Route path="/support" element={<SupportPortal />} />
+      <Route path="/support/:ticketId" element={<SupportPortal />} />
+      <Route path="/admin/support" element={<AdminRoute><AdminSupport /></AdminRoute>} />
+      <Route path="/admin/support/:ticketId" element={<AdminRoute><AdminSupport /></AdminRoute>} />
       <Route
         path="/admin"
         element={<AdminRoute><AdminDashboard /></AdminRoute>}
@@ -100,6 +128,8 @@ function AppContent() {
       <Route path="/admin/reports" element={<AdminRoute><ReportsPage key="admin-reports" staff /></AdminRoute>} />
       <Route path="/admin/verification" element={<AdminRoute><ProfileVerification /></AdminRoute>} />
       <Route path="/admin/content" element={<AdminRoute><ContentModeration /></AdminRoute>} />
+      <Route path="/admin/operations" element={<AdminRoute><Operations /></AdminRoute>} />
+      <Route path="/admin/operations/:type/:recordId" element={<AdminRoute><OperationsDetails /></AdminRoute>} />
       <Route path="/admin/content/:type/:profileId" element={<AdminRoute><ContentDetails /></AdminRoute>} />
       <Route path="/moderator/content" element={<StaffRoute permission="content.read"><ContentModeration /></StaffRoute>} />
       <Route path="/moderator/content/:type/:profileId" element={<StaffRoute permission="content.read"><ContentDetails /></StaffRoute>} />

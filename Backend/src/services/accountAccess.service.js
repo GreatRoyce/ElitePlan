@@ -23,6 +23,7 @@ function accountRestriction(user, now = new Date()) {
 }
 
 function sessionRejection(user, decoded, now = new Date()) {
+  if (decoded.purpose !== undefined) return { code: "SESSION_REVOKED", message: "This session is limited to support. Sign in normally to access the dashboard." };
   if (!user) return { code: "SESSION_REVOKED", message: "Your session is no longer valid. Please sign in again." };
   const restriction = accountRestriction(user, now);
   if (restriction) return restriction;

@@ -1,3 +1,5 @@
+require("./helpers/staffAuditStub").install();
+require("./helpers/platformSettingsStub").install();
 const { test, before, beforeEach, afterEach, after } = require("node:test");
 const assert = require("node:assert/strict");
 const http = require("node:http");

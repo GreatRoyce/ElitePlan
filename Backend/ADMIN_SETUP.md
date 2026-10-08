@@ -1,4 +1,4 @@
-# Admin setup — stages 1 to 9
+# Admin setup — stages 1 to 14
 
 This stage adds the `/admin` dashboard and `GET /api/v1/admin/overview`.
 The API requires a valid token and an account whose current database role is `admin`.
@@ -60,6 +60,33 @@ Content review and reversible listing hiding/restoration are available at
 See [CONTENT_MODERATION.md](CONTENT_MODERATION.md) for visibility enforcement,
 owner corrections, revision checks, and the limits of existing upload URLs.
 
+Consultation and event oversight is available to admins at `/admin/operations`,
+covering requests, standalone events and planner board events. See
+[OPERATIONS_OVERSIGHT.md](OPERATIONS_OVERSIGHT.md) for review flags, status
+interventions, participant notifications and member access enforcement.
+
+Member support and appeals are available at `/support`, including support-only
+sign-in for restricted accounts. Admins review cases at `/admin/support`. See
+[SUPPORT_AND_APPEALS.md](SUPPORT_AND_APPEALS.md) for independent review, restoration,
+conversation privacy, session isolation, and deployment limits.
+
+Announcements are managed at `/admin/announcements` and read at `/announcements`.
+See [ANNOUNCEMENTS.md](ANNOUNCEMENTS.md) for drafts, audiences, scheduling, expiry,
+withdrawal, private acknowledgements, and banner refresh behavior.
+
+Central staff audit history is available to admins at `/admin/audit`. See
+[STAFF_AUDIT.md](STAFF_AUDIT.md) for actor snapshots, mutation coverage, outcomes,
+failure handling, filtering and retention beyond individual record histories.
+
+Platform health and signup/consultation availability settings are available at
+`/admin/platform`. See [PLATFORM_HEALTH_AND_SETTINGS.md](PLATFORM_HEALTH_AND_SETTINGS.md)
+for real health probes, pause enforcement, revisions, public readiness, audit
+coverage and deployment limits.
+
+Sponsored adverts are managed at `/admin/adverts`, with home-page and dashboard
+overview spaces that rotate every 15 seconds. See [ADVERTS.md](ADVERTS.md) for
+drafts, schedules, audiences, withdrawal, audit coverage and display controls.
+
 ## Validation
 
 Run `npm test` from `Backend`. The tests exercise the admin router over HTTP with
@@ -69,10 +96,7 @@ They do not connect to the deployed database or promote an account.
 
 From `frontend`, run `npm run build` and focused ESLint for the changed files.
 
-## Remaining stages
+## Roadmap status
 
-10. Consultation and event oversight tools.
-11. Support and appeals.
-12. Announcements.
-13. Staff audit history.
-14. Platform health and settings.
+All fourteen stages in the initial admin roadmap are implemented. Deployment
+and live browser/database checks remain separate from the local validation.
