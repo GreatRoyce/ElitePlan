@@ -1,9 +1,12 @@
 # Removed-user archive
 
 Stage 5 adds the admin-only **Removed users** folder at `/admin/archive`.
-From a member's detail page, enter a removal reason, review it, and confirm
-removal. Open a saved account from the folder to inspect its removal date,
-admin ID, reason, profile summary, activity totals, and recent action history.
+The Users list shows a **Remove user** action beside each member account for
+the Site Owner and admins. It opens that account's removal form and focuses
+the reason field. Enter a removal reason, review it, and confirm removal.
+Staff accounts have no removal action. Open a saved account from the folder to
+inspect its removal date, admin ID, reason, profile summary, activity totals,
+and recent action history.
 Restoration also requires a reason and confirmation.
 
 ## Saved records

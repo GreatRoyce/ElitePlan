@@ -6,6 +6,7 @@
   "scripts": {
     "test": "node --test tests/*.test.js",
     "admin:bootstrap": "node scripts/bootstrap-admin.js",
+    "owner:seed": "node scripts/seed-site-owner.js",
     "start": "node server.js",
     "dev": "nodemon server.js"
   },

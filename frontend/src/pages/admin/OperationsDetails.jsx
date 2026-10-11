@@ -4,22 +4,210 @@ import AdminLayout from "./AdminLayout";
 import OperationsActions from "./OperationsActions";
 import api, { getApiErrorMessage } from "../../utils/axios";
 import { operationTypes, operationActions } from "../../utils/operations";
-import { verificationFocus as focus, verificationDate as date } from "../../utils/profileVerification";
+import {
+  verificationFocus as focus,
+  verificationDate as date,
+} from "../../utils/profileVerification";
 
 export function OperationsSummary({ data }) {
   const r = data.record;
-  return <div className="mt-6 grid gap-5 xl:grid-cols-2"><section className="rounded-2xl bg-white p-5"><h2 className="text-lg font-semibold">Operational details</h2><dl className="mt-4 space-y-3 text-sm">{[["Source", operationTypes[r.type]], ["Status", r.status], ["Scheduled (Lagos)", date(r.date)], ["Created (Lagos)", date(r.createdAt)], ["Location", typeof r.location === "object" ? Object.values(r.location || {}).filter(Boolean).join(", ") : r.location], ...(r.type === "consultations" ? [["Requested time", r.eventTime], ["Guest range", `${r.guests?.min ?? "?"}–${r.guests?.max ?? "?"}`], ["Services", (r.services || []).join(", ")]] : [])].map(([label, value]) => <div key={label} className="grid gap-1 sm:grid-cols-[150px_minmax(0,1fr)]"><dt className="text-gray-500">{label}</dt><dd className="min-w-0 whitespace-pre-wrap break-words capitalize">{value || "Not provided"}</dd></div>)}</dl><p className="mt-5 text-sm">Follow-up: {data.oversight.flagged ? "Flagged for review" : "No active flag"}</p>{data.oversight.notice?.reason && <p className="mt-3 whitespace-pre-wrap break-words text-sm">Latest participant notice: {data.oversight.notice.reason}</p>}</section><section className="rounded-2xl bg-white p-5"><h2 className="text-lg font-semibold">Participants</h2><ul className="mt-4 divide-y divide-gray-100">{data.participants.map((p, index) => <li key={`${p.label}:${index}`} className="py-3"><p className="break-words text-sm font-semibold">{p.label}: {p.name}</p><p className="mt-1 text-xs text-gray-500">{p.archived ? "Archived account" : p.accountStatus}{p.missingProfile && " · Profile missing"}</p>{p.userId && !p.missing && <Link to={`/admin/users/${p.userId}`} className={`mt-2 inline-block rounded text-xs underline ${focus}`}>View account</Link>}</li>)}</ul><p className="mt-4 text-xs leading-relaxed text-gray-500">Missing or archived participants remain visible for historical review. Private conversation contents and payment details are excluded.</p></section></div>;
+  return (
+    <div className="mt-6 grid gap-5 xl:grid-cols-2">
+      <section className="rounded-2xl bg-white p-5">
+        <h2 className="text-lg font-semibold">Operational details</h2>
+        <dl className="mt-4 space-y-3 text-sm">
+          {[
+            ["Source", operationTypes[r.type]],
+            ["Status", r.status],
+            ["Scheduled (Lagos)", date(r.date)],
+            ["Created (Lagos)", date(r.createdAt)],
+            [
+              "Location",
+              typeof r.location === "object"
+                ? Object.values(r.location || {})
+                    .filter(Boolean)
+                    .join(", ")
+                : r.location,
+            ],
+            ...(r.type === "consultations"
+              ? [
+                  ["Requested time", r.eventTime],
+                  [
+                    "Guest range",
+                    `${r.guests?.min ?? "?"}–${r.guests?.max ?? "?"}`,
+                  ],
+                  ["Services", (r.services || []).join(", ")],
+                ]
+              : []),
+          ].map(([label, value]) => (
+            <div
+              key={label}
+              className="grid gap-1 sm:grid-cols-[150px_minmax(0,1fr)]"
+            >
+              <dt className="text-gray-500">{label}</dt>
+              <dd className="min-w-0 whitespace-pre-wrap break-words capitalize">
+                {value || "Not provided"}
+              </dd>
+            </div>
+          ))}
+        </dl>
+        <p className="mt-5 text-sm">
+          Follow-up:{" "}
+          {data.oversight.flagged ? "Flagged for review" : "No active flag"}
+        </p>
+        {data.oversight.notice?.reason && (
+          <p className="mt-3 whitespace-pre-wrap break-words text-sm">
+            Latest participant notice: {data.oversight.notice.reason}
+          </p>
+        )}
+      </section>
+      <section className="rounded-2xl bg-white p-5">
+        <h2 className="text-lg font-semibold">Participants</h2>
+        <ul className="mt-4 divide-y divide-gray-100">
+          {data.participants.map((p, index) => (
+            <li key={`${p.label}:${index}`} className="py-3">
+              <p className="break-words text-sm font-semibold">
+                {p.label}: {p.name}
+              </p>
+              <p className="mt-1 text-xs text-gray-500">
+                {p.archived ? "Archived account" : p.accountStatus}
+                {p.missingProfile && " · Profile missing"}
+              </p>
+              {p.userId && !p.missing && (
+                <Link
+                  to={`/admin/users/${p.userId}`}
+                  className={`mt-2 inline-block rounded text-xs underline ${focus}`}
+                >
+                  View account
+                </Link>
+              )}
+            </li>
+          ))}
+        </ul>
+        <p className="mt-4 text-xs leading-relaxed text-gray-500">
+          Missing or archived participants remain visible for historical review.
+          Private conversation contents and payment details are excluded.
+        </p>
+      </section>
+    </div>
+  );
 }
 export default function OperationsDetails() {
-  const { type, recordId } = useParams(), key = `${type}:${recordId}`;
-  const [result, setResult] = useState(null), [loading, setLoading] = useState(true), [error, setError] = useState(""), [notice, setNotice] = useState(null);
-  const request = useRef(null), data = result?.key === key ? result.data : null;
+  const { type, recordId } = useParams(),
+    key = `${type}:${recordId}`;
+  const [result, setResult] = useState(null),
+    [loading, setLoading] = useState(true),
+    [error, setError] = useState(""),
+    [notice, setNotice] = useState(null);
+  const request = useRef(null),
+    data = result?.key === key ? result.data : null;
   const load = useCallback(async () => {
-    request.current?.abort(); const controller = new AbortController(); request.current = controller; setLoading(true); setError("");
-    try { const response = await api.get(`/admin/operations/${encodeURIComponent(type)}/${encodeURIComponent(recordId)}`, { signal: controller.signal }); if (!controller.signal.aborted) setResult({ key: `${type}:${recordId}`, data: response.data.data }); }
-    catch (failure) { if (!controller.signal.aborted) { setResult(null); setError(getApiErrorMessage(failure, "Unable to load this operations record.")); } }
-    finally { if (!controller.signal.aborted) setLoading(false); }
+    request.current?.abort();
+    const controller = new AbortController();
+    request.current = controller;
+    setLoading(true);
+    setError("");
+    try {
+      const response = await api.get(
+        `/admin/operations/${encodeURIComponent(type)}/${encodeURIComponent(recordId)}`,
+        { signal: controller.signal },
+      );
+      if (!controller.signal.aborted)
+        setResult({ key: `${type}:${recordId}`, data: response.data.data });
+    } catch (failure) {
+      if (!controller.signal.aborted) {
+        setResult(null);
+        setError(
+          getApiErrorMessage(failure, "Unable to load this operations record."),
+        );
+      }
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
   }, [type, recordId]);
-  useEffect(() => { load(); return () => request.current?.abort(); }, [load]);
-  return <AdminLayout loading={loading}><Link to={`/admin/operations?type=${encodeURIComponent(type || "consultations")}`} className={`rounded text-sm underline ${focus}`}>Back to operations queue</Link><div className="mt-5 flex flex-wrap items-start justify-between gap-4"><h1 className="break-words text-2xl font-bold sm:text-3xl">{data?.record.title || "Operations review"}</h1><button onClick={load} disabled={loading} className={`rounded-lg bg-white px-4 py-2 text-sm disabled:opacity-40 ${focus}`}>Refresh</button></div>{notice?.key === key && <p role={notice.error ? "alert" : "status"} className="mt-5 rounded-xl bg-white p-4 text-sm">{notice.message}</p>}{error && <p role="alert" className="mt-5 text-sm text-red-700">{error}</p>}{loading && !data && <p role="status" className="mt-5 text-sm">Loading operations record...</p>}{data && <><OperationsSummary data={data} /><OperationsActions key={`${key}:${data.oversight.version}`} data={data} disabled={loading || Boolean(error)} onChanged={async (message) => { setNotice({ ...message, key }); await load(); }} /><section className="mt-6 rounded-2xl bg-white p-5"><h2 className="text-lg font-semibold">Review history</h2><p className="mt-2 text-xs text-gray-500">Visible only to admins. The most recent 100 changes are retained.</p>{data.oversight.history.length ? <ul className="mt-4 divide-y divide-gray-100">{data.oversight.history.map((e) => <li key={e._id} className="py-4"><p className="text-sm font-semibold">{operationActions[e.action] || "Participant status change"}{e.from !== e.to && ` · ${e.from} → ${e.to}`}</p><p className="mt-2 whitespace-pre-wrap break-words text-sm">{e.reason}</p><p className="mt-2 break-all text-xs text-gray-500">{date(e.at)} (Lagos) · Actor ID: {e.by}</p></li>)}</ul> : <p className="mt-4 text-sm text-gray-500">No recorded reviews.</p>}</section></>}</AdminLayout>;
+  useEffect(() => {
+    load();
+    return () => request.current?.abort();
+  }, [load]);
+  return (
+    <AdminLayout loading={loading}>
+      <Link
+        to={`/admin/operations?type=${encodeURIComponent(type || "consultations")}`}
+        className={`rounded text-sm underline ${focus}`}
+      >
+        Back to operations queue
+      </Link>
+      <div className="mt-5 flex flex-wrap items-start justify-between gap-4">
+        <h1 className="break-words text-2xl font-bold sm:text-3xl">
+          {data?.record.title || "Operations review"}
+        </h1>
+        <button
+          onClick={load}
+          disabled={loading}
+          className={`rounded-lg bg-white px-4 py-2 text-sm disabled:opacity-40 ${focus}`}
+        >
+          Refresh
+        </button>
+      </div>
+      {notice?.key === key && (
+        <p
+          role={notice.error ? "alert" : "status"}
+          className="mt-5 rounded-xl bg-white p-4 text-sm"
+        >
+          {notice.message}
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="mt-5 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+      {loading && !data && (
+        <p role="status" className="mt-5 text-sm">
+          Loading operations record...
+        </p>
+      )}
+      {data && (
+        <>
+          <OperationsSummary data={data} />
+          <OperationsActions
+            key={`${key}:${data.oversight.version}`}
+            data={data}
+            disabled={loading || Boolean(error)}
+            onChanged={async (message) => {
+              setNotice({ ...message, key });
+              await load();
+            }}
+          />
+          <section className="mt-6 rounded-2xl bg-white p-5">
+            <h2 className="text-lg font-semibold">Review history</h2>
+            <p className="mt-2 text-xs text-gray-500">
+              Visible only to admins. The most recent 100 changes are retained.
+            </p>
+            {data.oversight.history.length ? (
+              <ul className="mt-4 divide-y divide-gray-100">
+                {data.oversight.history.map((e) => (
+                  <li key={e._id} className="py-4">
+                    <p className="text-sm font-semibold">
+                      {operationActions[e.action] ||
+                        "Participant status change"}
+                      {e.from !== e.to && ` · ${e.from} → ${e.to}`}
+                    </p>
+                    <p className="mt-2 whitespace-pre-wrap break-words text-sm">
+                      {e.reason}
+                    </p>
+                    <p className="mt-2 break-all text-xs text-gray-500">
+                      {date(e.at)} (Lagos) · Actor ID: {e.by}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-4 text-sm text-gray-500">No recorded reviews.</p>
+            )}
+          </section>
+        </>
+      )}
+    </AdminLayout>
+  );
 }

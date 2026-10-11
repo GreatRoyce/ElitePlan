@@ -23,6 +23,9 @@ const UserSchema = new Schema(
 
     password: { type: String, required: true },
 
+    // Ownership is separate from the admin role used by existing access guards.
+    isSiteOwner: { type: Boolean, default: false, immutable: true },
+
     accountStatus: { type: String, enum: ["active", "suspended", "banned"], default: "active" },
     suspendedUntil: { type: Date, default: null },
     moderationReason: { type: String, maxlength: 1000, default: null },
@@ -81,5 +84,10 @@ const UserSchema = new Schema(
 UserSchema.index({ createdAt: -1, _id: -1 });
 UserSchema.index({ role: 1, createdAt: -1, _id: -1 });
 UserSchema.index({ archivedAt: -1, _id: -1 });
+UserSchema.index({ isSiteOwner: 1 }, {
+  unique: true,
+  partialFilterExpression: { isSiteOwner: true },
+  name: "single_site_owner",
+});
 
 module.exports = mongoose.model("User", UserSchema);

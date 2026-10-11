@@ -4,7 +4,34 @@ This stage adds the `/admin` dashboard and `GET /api/v1/admin/overview`.
 The API requires a valid token and an account whose current database role is `admin`.
 Public signup continues to accept only `client`, `vendor`, and `planner`.
 
-## Set up the first admin
+## Seed the Site Owner
+
+The Site Owner is identified by `isSiteOwner: true` and uses the `admin` role
+for full access to the existing dashboard. Ordinary admins have no ownership
+flag. A unique partial MongoDB index permits only one Site Owner, including
+when seed commands run concurrently. Existing staff and member accounts are
+never promoted, replaced, or deleted by the owner seed.
+
+1. Copy the settings from [.env.owner.example](.env.owner.example) into
+   `Backend/.env`: `SITE_OWNER_NAME`, `SITE_OWNER_EMAIL`, `SITE_OWNER_PHONE`,
+   and `SITE_OWNER_PASSWORD`. Use a dedicated email and a password of at least
+   12 non-padding characters, up to 72 UTF-8 bytes. Quote passwords containing
+   `#`. Keep credentials in the ignored backend environment file.
+2. With `DBSTRING` configured, run `npm run owner:seed` from `Backend`.
+   The command creates the required unique indexes before writing, hashes the
+   password with bcrypt, and creates an active Site Owner without a customer
+   profile. Ordinary admins may already exist.
+3. Sign in through `/login`; the account opens `/admin`.
+
+Rerunning with the same owner email leaves its password, details, and access
+status unchanged. A different owner email or an email already used by a
+non-owner account is rejected. Changing environment values does not reset a
+password or transfer ownership. The command does not run on server startup.
+The ownership flag is immutable through normal Mongoose updates; existing
+admin protections prevent moderation, archiving, and staff-role changes through
+the application. A database administrator still has direct database access.
+
+## Set up an ordinary first admin (legacy bootstrap)
 
 1. Register a dedicated staff account using the existing registration page.
 2. From `Backend`, run `npm run admin:bootstrap -- your-staff-email@example.com`.

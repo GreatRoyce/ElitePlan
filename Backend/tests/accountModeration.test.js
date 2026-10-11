@@ -489,12 +489,13 @@ test("moderation racing the socket handshake is caught by the connection recheck
   assert.equal(client.connected, false);
 });
 
-test("public signup cannot supply moderation, archive or staff metadata, or session versions", async (t) => {
+test("public signup cannot supply ownership, moderation, archive or staff metadata, or session versions", async (t) => {
   let registered;
   t.mock.method(User.prototype, "save", async function () { registered = this.toObject(); return this; });
-  const result = await request("/auth/register", { body: { username: "New vendor", email: "new@example.com", phone: "123", password: "test-password", role: "vendor", accountStatus: "banned", authVersion: 99, moderationVersion: 99, lastWarning: { reason: "Injected" }, archivedAt: new Date().toISOString(), archivedBy: ADMIN, archiveReason: "Injected", moderatorPermissions: ["users.read", "users.ban"], staffMemberRole: "client", staffHistory: [{ action: "appoint" }] } });
+  const result = await request("/auth/register", { body: { username: "New vendor", email: "new@example.com", phone: "123", password: "test-password", role: "vendor", isSiteOwner: true, accountStatus: "banned", authVersion: 99, moderationVersion: 99, lastWarning: { reason: "Injected" }, archivedAt: new Date().toISOString(), archivedBy: ADMIN, archiveReason: "Injected", moderatorPermissions: ["users.read", "users.ban"], staffMemberRole: "client", staffHistory: [{ action: "appoint" }] } });
   assert.equal(result.status, 201);
   assert.equal(registered.accountStatus, "active");
+  assert.equal(registered.isSiteOwner, false);
   assert.equal(registered.authVersion, 0);
   assert.equal(registered.moderationVersion, 0);
   assert.equal(registered.lastWarning.reason, undefined);
